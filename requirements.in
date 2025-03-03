@@ -1,0 +1,9 @@
+-c platform_constraints.txt
+skill-framework[ui]
+answerrocket-client
+numpy
+pandas
+matplotlib
+sqlglot
+jinja2
+git+https://jonathan-leo@bitbucket.org/aglabs/ar-analytics.git#egg=ar-analytics
