@@ -10,6 +10,8 @@ Once you have direnv set up and activating inside the repo, just `make` to insta
 
 Note that the platform_constraints.txt file is used to generate the requirements.txt file. If you add any new packages to the platform, you'll need to make sure copy + paste MaxServer/setup/requirements.txt into platform_constraints.txt. This is to ensure that dependencies are the same when testing locally vs on the platform.
 
-## Development
+## Local Development
+
+Make sure to set the `AR_URL` and `AR_TOKEN` environment variables when running the skill locally, these will be used to setup the AnswerRocket Client. 
 
 To run the skill locally, refer to the skill-framework [README](https://github.com/answerrocket/skill-framework/tree/main).
