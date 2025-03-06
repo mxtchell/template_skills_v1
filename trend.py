@@ -1,7 +1,7 @@
 from __future__ import annotations
 from types import SimpleNamespace
 
-from skill_framework import skill, SkillParameter, SkillInput, SkillOutput
+from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput
 from skill_framework.preview import preview_skill
 
 from ar_analytics.trend import AdvanceTrend, TrendTemplateParameterSetup
@@ -80,7 +80,9 @@ def trend(parameters: SkillInput):
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=insights,
-        visualization=viz,
+        visualizations=[viz],
+        parameter_display_descriptions=[],
+        followup_questions=[]
     )
 
 
@@ -198,14 +200,14 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
         "subtitle": subtitle
     }
     rendered = template.render(**template_vars)
+    rendered = SkillVisualization(
+        title="Tab 1",
+        layout=rendered
+    )
     return rendered, insights, max_response_prompt
 
-#################### Dimension Breakout ####################
-####################################
 
 if __name__ == '__main__':
-    RUNNING_LOCALLY = True
-    # p = SkillInput(None, metrics=["sales", "volume"], breakouts=[], periods= ["2022"], growth_type="Y/Y")
     skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume"], 'breakouts': [], 'periods': ["2022"], 'growth_type': "Y/Y"})
     out = trend(skill_input)
     preview_skill(trend, out)
