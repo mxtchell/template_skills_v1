@@ -6,4 +6,5 @@ pandas
 matplotlib
 sqlglot
 jinja2
-git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.1#egg=ar-analytics
+pytest
+git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.2#egg=ar-analytics
