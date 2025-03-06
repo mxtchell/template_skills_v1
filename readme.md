@@ -12,6 +12,6 @@ Note that the platform_constraints.txt file is used to generate the requirements
 
 ## Local Development
 
-Make sure to set the `AR_URL` and `AR_TOKEN` environment variables when running the skill locally, these will be used to setup the AnswerRocket Client. 
+Make sure to set the `AR_URL`, `AR_TOKEN`, and `DATASET_ID` environment variables when running the skill locally, these will be used to setup the AnswerRocket Client. 
 
 To run the skill locally, refer to the skill-framework [README](https://github.com/answerrocket/skill-framework/tree/main).
