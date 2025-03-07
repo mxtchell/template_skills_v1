@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.2
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.3
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -194,7 +194,7 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
-skill-framework[ui]==0.3.0
+skill-framework[ui]==0.3.1
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in

@@ -30,7 +30,7 @@ anytree==2.12.1
     # via ttimer
 appnope==0.1.4
     # via ipython
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.2
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.3
     # via -r setup/requirements.in
 asttokens==2.4.1
     # via stack-data
@@ -574,7 +574,7 @@ six==1.16.0
     #   patsy
     #   python-dateutil
     #   thrift
-skill-framework==0.3.0
+skill-framework==0.3.1
     # via
     #   -r setup/requirements.in
     #   ar-analytics

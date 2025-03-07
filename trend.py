@@ -1,10 +1,12 @@
 from __future__ import annotations
 from types import SimpleNamespace
 
-from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput
+from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, SuggestedQuestion, ParameterDisplayDescription
 from skill_framework.preview import preview_skill
 
 from ar_analytics.trend import AdvanceTrend, TrendTemplateParameterSetup
+from ar_analytics import ArUtils
+from answer_rocket import AnswerRocketClient
 
 import jinja2
 import logging
@@ -15,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 @skill(
     name="trend",
-    description="The breakout skill is designed to enable comparisons and analyses of subjects that belong to the same group to show how these subjects rank or differ from one another. \nThis skill also provides multiple KPIs across a subject. \nThis skill should answer questions without breakouts, like a single value. \nIf a time period is one of the breakouts, this may not be the correct skill. However, if a single time period is asked for this likely is the correct skill to choose. \nFor single-point growth questions e.g. \"what was [filter] growth in[period]\", use this skill to analyze within the relevant dimension.",
+    description="""Trend Analysis is useful in understanding how metrics have evolved historically across multiple time periods and for observing patterns among different subjects or dimensional categories. It can show multiple metrics side-by-side over multiple time periods. Use this skill if a time period breakout is requested. Do not select this time period if a single period of analysis is selected, even if that request is for growth of that single period. It does not show metrics for single time periods and it does not forecast. For single-point growth questions e.g. "what was [filter] growth in [period]", use the dimension breakout skill to analyze within the relevant dimension.""",
     parameters=[
         SkillParameter(
             name="periods",
-            # constrained_to="date_filter", # not handled yet
+            constrained_to="date_filter",
             is_multi=True,
             description="If provided by the user, list time periods in a format 'q2 2023', '2021', 'jan 2023', 'mat nov 2022', 'mat q1 2021', 'ytd q4 2022', 'ytd 2023', 'ytd', 'mat', '<no_period_provided>' or '<since_launch>'. Use knowledge about today's date to handle relative periods and open ended periods. If given a range, for example 'last 3 quarters, 'between q3 2022 to q4 2023' etc, enumerate the range into a list of valid dates. Don't include natural language words or phrases, only valid dates like 'q3 2023', '2022', 'mar 2020', 'ytd sep 2021', 'mat q4 2021', 'ytd q1 2022', 'ytd 2021', 'ytd', 'mat', '<no_period_provided>' or '<since_launch>' etc."
         ),
@@ -41,7 +43,7 @@ logger = logging.getLogger(__name__)
         SkillParameter(
             name="time_granularity",
             is_multi=False,
-            # constrained_to="date_dimensions", # not handled yet
+            constrained_to="date_dimensions",
             description="time granularity provided by the user. only add if explicitly stated by user."
         ),
         SkillParameter(
@@ -57,19 +59,18 @@ logger = logging.getLogger(__name__)
     ]
 )
 def trend(parameters: SkillInput):
-
     param_dict = {"periods": [], "metrics": None, "limit_n": 10, "breakouts": [], "growth_type": None, "other_filters": [], "time_granularity": None}
     
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
             param_dict[key] = getattr(parameters.arguments, key)
-    
+
     env = SimpleNamespace(**param_dict)
     TrendTemplateParameterSetup(env=env)
     env.trend = AdvanceTrend.from_env(env=env)
     df = env.trend.run_from_env()
-
+    param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.trend.paramater_display_infomation.items()]
     charts = env.trend.default_chart
     tables = [env.trend.display_dfs.get("Metrics Table")]
 
@@ -80,8 +81,8 @@ def trend(parameters: SkillInput):
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=insights,
-        visualizations=[viz],
-        parameter_display_descriptions=[],
+        visualizations=viz,
+        parameter_display_descriptions=param_info,
         followup_questions=[]
     )
 
@@ -182,9 +183,99 @@ TEMPLATE = """
 }
 """
 
+TABLE_TEMPLATE = """
+{
+"type": "GridPanel",
+"rows": 100,
+"columns": 160,
+"rowHeight": "1.11%",
+"colWidth": "0.625%",
+"gap": "0px",
+"style": {
+    "backgroundColor": "white",
+    "border": "1px solid #ccc",
+    "width": "100%",
+    "height": "100%"
+},
+ "children": [
+    {% set ns = namespace(counter=0) %}
+    {
+            "name": "mainTitle",
+            "type": "Header",
+            "row": 0,
+            "column": 4,
+            "width": 120,
+            "height": 5,
+            "style": {
+                "textAlign": "left",
+                "verticalAlign": "middle",
+                "fontSize": "18px",
+                "fontWeight": "bold",
+                "color": "#333",
+                "fontFamily": "Arial, sans-serif"
+            },
+            "text": "{{title}}"
+    },
+    {
+            "name": "subtitle",
+            "type": "Header",
+            "row": 6,
+            "column": 4,
+            "width": 120,
+            "height": 5,
+            "style": {
+                "textAlign": "left",
+                "verticalAlign": "middle",
+                "fontSize": "12px",
+                "color": "#888",
+                "fontFamily": "Arial, sans-serif"
+            },
+            "text": "{{subtitle}}"
+    },
+    {% for df in dfs %}
+        {
+        "type": "DataTable",
+        "row": {{ns.counter + 12}},
+        "column": 1,
+        "width": 160,
+        "height": {{height}},
+        "columns": [
+            {% set total_cols = df.columns | length  %}
+            {% for col in df.columns %}
+                {% if loop.index0 == (df.columns | length) - 1 %}
+                    {"name": "{{ col }}"}
+                {% else %}
+                    {"name": "{{ col }}"},
+                {% endif %}
+            {% endfor %}
+        ],
+        "data": {{ df.fillna(0).to_numpy().tolist() | tojson }},
+        "styles": {
+                    "alternateRowColor": "#f0fff0",
+                    "fontFamily": "Arial, sans-serif",
+                    "th": {
+                        "backgroundColor": "#FOFOFO",
+                        "color": "#000000",
+                        "fontWeight": "bold"
+                    },
+                    "caption": {
+                        "backgroundColor": "#32ea05",
+                        "color": "#000000",
+                        "fontWeight": "bold",
+                        "fontSize": "10pt"
+                    }
+        }
+    }{% if not loop.last %},{% endif %}
+    {% set ns.counter = height*loop.index %}
+    {% endfor %}
+]
+}
+"""
+
 def render_layout(charts, tables, title, subtitle, insights_dfs):
-    height = int(80 / len(charts))
+
     template = jinja2.Template(TEMPLATE)
+    table_template = jinja2.Template(TABLE_TEMPLATE)
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -192,22 +283,38 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
     insight_template = jinja2.Template(INSIGHT_PROMPT).render(**{"facts": facts})
     max_response_prompt = jinja2.Template(MAX_PROMPT).render(**{"facts": facts})
     insights = insight_template
+    height = 80
 
-    template_vars = {
-        'dfs': charts,
+    viz = []
+    for name, chart in charts.items():
+        if name.strip().startswith("·"):
+            name = name.replace("·", "").strip()
+        template_vars = {
+            'dfs': [chart],
+            "height": height,
+            "title": title,
+            "subtitle": subtitle
+        }
+        rendered = template.render(**template_vars)
+        viz.append(SkillVisualization(title=name, layout=rendered))
+
+
+    table_template_vars = {
+        'dfs': tables[0],
         "height": height,
         "title": title,
         "subtitle": subtitle
     }
-    rendered = template.render(**template_vars)
-    rendered = SkillVisualization(
-        title="Tab 1",
-        layout=rendered
-    )
-    return rendered, insights, max_response_prompt
+    table = table_template.render(**table_template_vars)
+    viz.append(SkillVisualization(title="Metrics Table", layout=table))
 
+    # adding insights
+    ar_utils = ArUtils()
+    rendered_insight = ar_utils.get_llm_response(insights)
+
+    return viz, rendered_insight, max_response_prompt
 
 if __name__ == '__main__':
-    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume"], 'breakouts': [], 'periods': ["2022"], 'growth_type': "Y/Y"})
+    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume"], 'periods': ["2022"], 'growth_type': "Y/Y"})
     out = trend(skill_input)
     preview_skill(trend, out)
