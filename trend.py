@@ -6,7 +6,6 @@ from skill_framework.preview import preview_skill
 
 from ar_analytics.trend import AdvanceTrend, TrendTemplateParameterSetup
 from ar_analytics import ArUtils
-from answer_rocket import AnswerRocketClient
 
 import jinja2
 import logging
@@ -251,7 +250,7 @@ TABLE_TEMPLATE = """
         ],
         "data": {{ df.fillna(0).to_numpy().tolist() | tojson }},
         "styles": {
-                    "alternateRowColor": "#f0fff0",
+                    "alternateRowColor": "#f9f9f9",
                     "fontFamily": "Arial, sans-serif",
                     "th": {
                         "backgroundColor": "#FOFOFO",
@@ -273,7 +272,7 @@ TABLE_TEMPLATE = """
 """
 
 def render_layout(charts, tables, title, subtitle, insights_dfs):
-
+    DEFAULT_HEIGHT = 80
     template = jinja2.Template(TEMPLATE)
     table_template = jinja2.Template(TABLE_TEMPLATE)
     facts = []
@@ -283,14 +282,14 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
     insight_template = jinja2.Template(INSIGHT_PROMPT).render(**{"facts": facts})
     max_response_prompt = jinja2.Template(MAX_PROMPT).render(**{"facts": facts})
     insights = insight_template
-    height = 80
 
     viz = []
     for name, chart in charts.items():
         if name.strip().startswith("·"):
             name = name.replace("·", "").strip()
+        height = (DEFAULT_HEIGHT // len(chart)) + 1
         template_vars = {
-            'dfs': [chart],
+            'dfs': chart,
             "height": height,
             "title": title,
             "subtitle": subtitle
@@ -301,7 +300,7 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
 
     table_template_vars = {
         'dfs': tables[0],
-        "height": height,
+        "height": DEFAULT_HEIGHT,
         "title": title,
         "subtitle": subtitle
     }
@@ -315,6 +314,6 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
     return viz, rendered_insight, max_response_prompt
 
 if __name__ == '__main__':
-    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume"], 'periods': ["2022"], 'growth_type': "Y/Y"})
+    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["2022"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})
     out = trend(skill_input)
     preview_skill(trend, out)
