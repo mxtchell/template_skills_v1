@@ -248,7 +248,7 @@ TABLE_TEMPLATE = """
                 {% endif %}
             {% endfor %}
         ],
-        "data": {{ df.fillna(0).to_numpy().tolist() | tojson }},
+        "data": {{ df.fillna('N/A').to_numpy().tolist() | tojson }},
         "styles": {
                     "alternateRowColor": "#f9f9f9",
                     "fontFamily": "Arial, sans-serif",

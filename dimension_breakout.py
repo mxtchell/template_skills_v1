@@ -1,11 +1,11 @@
 from __future__ import annotations
 from types import SimpleNamespace
 
-from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput
+from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, ParameterDisplayDescription
 from skill_framework.preview import preview_skill
-from answer_rocket import AnswerRocketClient
 
 from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup
+from ar_analytics import ArUtils
 
 import jinja2
 import logging
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
     parameters=[
         SkillParameter(
             name="periods",
-            # constrained_to="date_filter",
+            constrained_to="date_filter",
             is_multi=True,
             description="If provided by the user, list time periods in a format 'q2 2023', '2021', 'jan 2023', 'mat nov 2022', 'mat q1 2021', 'ytd q4 2022', 'ytd 2023', 'ytd', 'mat', '<no_period_provided>' or '<since_launch>'. Use knowledge about today's date to handle relative periods and open ended periods. If given a range, for example 'last 3 quarters, 'between q3 2022 to q4 2023' etc, enumerate the range into a list of valid dates. Don't include natural language words or phrases, only valid dates like 'q3 2023', '2022', 'mar 2020', 'ytd sep 2021', 'mat q4 2021', 'ytd q1 2022', 'ytd 2021', 'ytd', 'mat', '<no_period_provided>' or '<since_launch>' etc."
         ),
@@ -50,9 +50,9 @@ logger = logging.getLogger(__name__)
         ),
         SkillParameter(
             name="growth_trend",
-            # constrained_to=None,
-            # constrained_values=["fastest growing", "highest growing", "highest declining", "fastest declining",
-                                # "smallest overall", "biggest overall"],
+            constrained_to=None,
+            constrained_values=["fastest growing", "highest growing", "highest declining", "fastest declining",
+                                "smallest overall", "biggest overall"],
             description="indicates the trend type (fastest, highest, overall size) within a specified growth metric (year over year, period over period) for entities being analyzed."
         ),
         SkillParameter(
@@ -76,22 +76,24 @@ def simple_breakout(parameters: SkillInput):
     _ = env.ba.run_from_env()
 
     tables = env.ba.get_display_tables()
+    param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.ba.paramater_display_infomation.items()]
 
     insights_dfs = [env.ba.df_notes, env.ba.breakout_facts, env.ba.subject_facts]
+    followups = env.ba.get_suggestions()
 
     viz, insights, final_prompt = render_layout(tables, env.ba.title, env.ba.subtitle, insights_dfs)
 
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=insights,
-        visualizations=[viz],
-        parameter_display_descriptions=[],
-        followup_questions=[]
+        visualizations=viz,
+        parameter_display_descriptions=param_info,
+        followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")]
     )
     
     
 def render_layout(tables, title, subtitle, insights_dfs):
-    height = int(100 / len(tables))
+    height = 80
     template = jinja2.Template(TEMPLATE)
     facts = []
     for i_df in insights_dfs:
@@ -99,20 +101,22 @@ def render_layout(tables, title, subtitle, insights_dfs):
 
     insight_template = jinja2.Template(INSIGHT_PROMPT).render(**{"facts": facts})
     max_response_prompt = jinja2.Template(MAX_PROMPT).render(**{"facts": facts})
-    insights = insight_template
 
-    template_vars = {
-        'dfs': tables,
-        "height": height,
-        "title": title,
-        "subtitle": subtitle
-    }
-    rendered = template.render(**template_vars)
-    render_layout = SkillVisualization(
-        title="Tab 1",
-        layout=rendered
-    )
-    return render_layout, insights, max_response_prompt
+    # adding insights
+    ar_utils = ArUtils()
+    insights = ar_utils.get_llm_response(insight_template)
+    viz_list = []
+
+    for name, table in tables.items():
+        template_vars = {
+            'dfs': [table],
+            "height": height,
+            "title": title,
+            "subtitle": subtitle
+        }
+        rendered = template.render(**template_vars)
+        viz_list.append(SkillVisualization(title=name, layout=rendered))
+    return viz_list, insights, max_response_prompt
 
 MAX_PROMPT = """
 Anwer user question in 30 words or less using following facts: {{facts}}
@@ -212,9 +216,9 @@ TEMPLATE = """
                 {% endif %}
             {% endfor %}
         ],
-        "data": {{ df.to_numpy().tolist() | tojson }},
+        "data": {{ df.fillna('N/A').to_numpy().tolist() | tojson }},
         "styles": {
-                    "alternateRowColor": "#f0fff0",
+                    "alternateRowColor": "#f9f9f9",
                     "fontFamily": "Arial, sans-serif",
                     "th": {
                         "backgroundColor": "#FOFOFO",
@@ -234,9 +238,6 @@ TEMPLATE = """
 ]
 }
 """
-
-#################### Dimension Breakout ####################
-####################################
 
 if __name__ == '__main__':
     skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
