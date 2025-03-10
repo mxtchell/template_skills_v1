@@ -63,12 +63,12 @@ logger = logging.getLogger(__name__)
 )
 def simple_breakout(parameters: SkillInput):
     param_dict = {"periods": [], "metrics": None, "limit_n": 10, "breakouts": None, "growth_type": None, "other_filters": [], "growth_trend": None, "calculated_metric_filters": None}
-    
+    print(f"Skill received following parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
             param_dict[key] = getattr(parameters.arguments, key)
-            
+
     env = SimpleNamespace(**param_dict)
     vars(env).update(vars(parameters.arguments))
     BreakoutAnalysisTemplateParameterSetup(env=env)
@@ -81,7 +81,7 @@ def simple_breakout(parameters: SkillInput):
     insights_dfs = [env.ba.df_notes, env.ba.breakout_facts, env.ba.subject_facts]
     followups = env.ba.get_suggestions()
 
-    viz, insights, final_prompt = render_layout(tables, env.ba.title, env.ba.subtitle, insights_dfs)
+    viz, insights, final_prompt = render_layout(tables, env.ba.title, env.ba.subtitle, insights_dfs, env.ba.warning_message)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -92,7 +92,7 @@ def simple_breakout(parameters: SkillInput):
     )
     
     
-def render_layout(tables, title, subtitle, insights_dfs):
+def render_layout(tables, title, subtitle, insights_dfs, warnings):
     height = 80
     template = jinja2.Template(TEMPLATE)
     facts = []
@@ -112,7 +112,8 @@ def render_layout(tables, title, subtitle, insights_dfs):
             'dfs': [table],
             "height": height,
             "title": title,
-            "subtitle": subtitle
+            "subtitle": subtitle,
+            "warnings": warnings
         }
         rendered = template.render(**template_vars)
         viz_list.append(SkillVisualization(title=name, layout=rendered))
@@ -170,9 +171,9 @@ TEMPLATE = """
             "name": "mainTitle",
             "type": "Header",
             "row": 0,
-            "column": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -186,10 +187,10 @@ TEMPLATE = """
     {
             "name": "subtitle",
             "type": "Header",
-            "row": 6,
-            "column": 4,
+            "row": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -199,12 +200,33 @@ TEMPLATE = """
             },
             "text": "{{subtitle}}"
     },
+    {% set chart_start = 7 %}
+    {% if warnings %}
+        {% set chart_start = 10 %}
+        {
+                "name": "subtitle",
+                "type": "Header",
+                "row": 7,
+                "column": 1,
+                "width": 158,
+                "height": 2,
+                "style": {
+                    "textAlign": "left",
+                    "verticalAlign": "middle",
+                    "color": "#333",
+                    "fontFamily": "Arial, sans-serif",
+                    "backgroundColor": "#FFF8E1",
+                    "borderRadius": "10px"
+                },
+                "text": "{{warnings}}"
+        },
+    {% endif %}
     {% for df in dfs %}
         {
         "type": "DataTable",
-        "row": {{ns.counter + 12}},
+        "row": {{ns.counter + chart_start}},
         "column": 1,
-        "width": 160,
+        "width": 158,
         "height": {{height}},
         "columns": [
             {% set total_cols = df.columns | length  %}

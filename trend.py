@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
     ]
 )
 def trend(parameters: SkillInput):
+    print(f"Skill received following parameters: {parameters.arguments}")
     param_dict = {"periods": [], "metrics": None, "limit_n": 10, "breakouts": [], "growth_type": None, "other_filters": [], "time_granularity": None}
     
     # Update param_dict with values from parameters.arguments if they exist
@@ -75,7 +76,12 @@ def trend(parameters: SkillInput):
 
     insights_dfs = [env.trend.df_notes, env.trend.facts, env.trend.top_facts, env.trend.bottom_facts]
 
-    viz, insights, final_prompt = render_layout(charts, [tables], env.trend.title, env.trend.subtitle, insights_dfs)
+    viz, insights, final_prompt = render_layout(charts,
+                                                [tables],
+                                                env.trend.title,
+                                                env.trend.subtitle,
+                                                insights_dfs,
+                                                env.trend.warning_message)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -137,9 +143,9 @@ TEMPLATE = """
             "name": "mainTitle",
             "type": "Header",
             "row": 0,
-            "column": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -153,10 +159,10 @@ TEMPLATE = """
     {
             "name": "subtitle",
             "type": "Header",
-            "row": 6,
-            "column": 4,
+            "row": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -166,12 +172,33 @@ TEMPLATE = """
             },
             "text": "{{subtitle}}"
     },
+    {% set chart_start = 7 %}
+    {% if warnings %}
+        {% set chart_start = 10 %}
+        {
+                "name": "subtitle",
+                "type": "Header",
+                "row": 7,
+                "column": 1,
+                "width": 158,
+                "height": 2,
+                "style": {
+                    "textAlign": "left",
+                    "verticalAlign": "middle",
+                    "color": "#888",
+                    "fontFamily": "Arial, sans-serif",
+                    "backgroundColor": "#FFF8E1",
+                    "borderRadius": "10px"
+                },
+                "text": "{{warnings}}"
+        },
+    {% endif %}
     {% for df in dfs %}
         {
         "type": "HighchartsChart",
-        "row": {{ns.counter + 12}},
+        "row": {{ns.counter + chart_start}},
         "column": 1,
-        "width": 160,
+        "width": 158,
         "height": {{height}},
         "options": {{df}}
     }
@@ -202,9 +229,9 @@ TABLE_TEMPLATE = """
             "name": "mainTitle",
             "type": "Header",
             "row": 0,
-            "column": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -218,10 +245,10 @@ TABLE_TEMPLATE = """
     {
             "name": "subtitle",
             "type": "Header",
-            "row": 6,
-            "column": 4,
+            "row": 4,
+            "column": 1,
             "width": 120,
-            "height": 5,
+            "height": 2,
             "style": {
                 "textAlign": "left",
                 "verticalAlign": "middle",
@@ -231,12 +258,33 @@ TABLE_TEMPLATE = """
             },
             "text": "{{subtitle}}"
     },
+    {% set chart_start = 7 %}
+    {% if warnings %}
+        {% set chart_start = 10 %}
+        {
+                "name": "subtitle",
+                "type": "Header",
+                "row": 7,
+                "column": 1,
+                "width": 158,
+                "height": 2,
+                "style": {
+                    "textAlign": "left",
+                    "verticalAlign": "middle",
+                    "color": "#888",
+                    "fontFamily": "Arial, sans-serif",
+                    "backgroundColor": "#FFF8E1",
+                    "borderRadius": "10px"
+                },
+                "text": "{{warnings}}"
+        },
+    {% endif %}
     {% for df in dfs %}
         {
         "type": "DataTable",
-        "row": {{ns.counter + 12}},
+        "row": {{ns.counter + chart_start}},
         "column": 1,
-        "width": 160,
+        "width": 158,
         "height": {{height}},
         "columns": [
             {% set total_cols = df.columns | length  %}
@@ -271,7 +319,7 @@ TABLE_TEMPLATE = """
 }
 """
 
-def render_layout(charts, tables, title, subtitle, insights_dfs):
+def render_layout(charts, tables, title, subtitle, insights_dfs, warnings):
     DEFAULT_HEIGHT = 80
     template = jinja2.Template(TEMPLATE)
     table_template = jinja2.Template(TABLE_TEMPLATE)
@@ -292,7 +340,8 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
             'dfs': chart,
             "height": height,
             "title": title,
-            "subtitle": subtitle
+            "subtitle": subtitle,
+            "warnings": warnings
         }
         rendered = template.render(**template_vars)
         viz.append(SkillVisualization(title=name, layout=rendered))
@@ -302,7 +351,8 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
         'dfs': tables[0],
         "height": DEFAULT_HEIGHT,
         "title": title,
-        "subtitle": subtitle
+        "subtitle": subtitle,
+        "warnings": warnings
     }
     table = table_template.render(**table_template_vars)
     viz.append(SkillVisualization(title="Metrics Table", layout=table))
@@ -314,6 +364,6 @@ def render_layout(charts, tables, title, subtitle, insights_dfs):
     return viz, rendered_insight, max_response_prompt
 
 if __name__ == '__main__':
-    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["2022"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})
+    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["mat jun 2021"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})
     out = trend(skill_input)
     preview_skill(trend, out)
