@@ -82,6 +82,11 @@ def simple_metric_driver(parameters: SkillInput):
     }
     tables.update(results['viz_breakout_dfs'])
 
+    # remove sparklines
+    for key, item in tables.items():
+        if "sparkline" in item.columns:
+            item.drop(columns=["sparkline"], inplace=True)
+
     param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.da.paramater_display_infomation.items()]
 
     insights_dfs = [env.da.df_notes, env.da.breakout_facts, env.da.subject_fact.get("df", pd.DataFrame())]
