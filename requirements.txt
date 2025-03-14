@@ -109,6 +109,7 @@ matplotlib==3.7.2
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
+    #   ar-analytics
 mdurl==0.1.2
     # via markdown-it-py
 numpy==1.23.4
@@ -190,6 +191,10 @@ sgqlc==16.4
     #   ar-analytics
 shellingham==1.5.4
     # via typer
+simpleeval==0.9.13
+    # via
+    #   -c platform_constraints.txt
+    #   ar-analytics
 six==1.16.0
     # via
     #   -c platform_constraints.txt
@@ -209,7 +214,7 @@ sqlglot==26.2.1
     #   -c platform_constraints.txt
     #   -r requirements.in
     #   ar-analytics
-starlette==0.46.0
+starlette==0.46.1
     # via fastapi
 tomli==2.2.1
     # via pytest

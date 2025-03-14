@@ -75,7 +75,7 @@ def market_share_analysis(parameters: SkillInput):
         "type": "share",
         "tab_label": "Segments"
     }
-], "include_drivers": True, "market_cols": [], "impact_calcs": {},
+], "include_drivers": True, "market_cols": ["sub_category", "state_name"], "impact_calcs": {},
                   "decomposition_display_config": {  "Impact on Share": {
         "sales_share": ["impact"],
         "volume_share": ["impact"]
