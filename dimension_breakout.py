@@ -70,7 +70,6 @@ def simple_breakout(parameters: SkillInput):
             param_dict[key] = getattr(parameters.arguments, key)
 
     env = SimpleNamespace(**param_dict)
-    vars(env).update(vars(parameters.arguments))
     BreakoutAnalysisTemplateParameterSetup(env=env)
     env.ba = BreakoutAnalysis.from_env(env=env)
     _ = env.ba.run_from_env()

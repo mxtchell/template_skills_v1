@@ -103,7 +103,6 @@ def market_share_analysis(parameters: SkillInput):
         param_dict["growth_type"] = "Y/Y"
 
     env = SimpleNamespace(**param_dict)
-    vars(env).update(vars(parameters.arguments))
     MSBTemplateParameterSetup(env=env)
     env.msa = MarketShareBreakdown.from_env(env=env)
     result_dfs = env.msa.run_from_env()
@@ -299,6 +298,6 @@ TEMPLATE = """
 
 if __name__ == '__main__':
     skill_input: SkillInput = market_share_analysis.create_input(
-        arguments={'metric': "sales", 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': [{"val": ["barilla"],"dim": "brand","op": "="}]})
+        arguments={'metric': "sales", 'periods': ["2022"], 'other_filters': [{"val": ["barilla"],"dim": "brand","op": "="}]})
     out = market_share_analysis(skill_input)
     preview_skill(market_share_analysis, out)
