@@ -298,6 +298,12 @@ TEMPLATE = """
 
 if __name__ == '__main__':
     skill_input: SkillInput = market_share_analysis.create_input(
-        arguments={'metric': "sales", 'periods': ["2022"], 'other_filters': [{"val": ["barilla"],"dim": "brand","op": "="}]})
+        arguments={'metric': "sales", 'periods': ["2022"], 'other_filters': [{"val": ["barilla"],"dim": "brand","op": "="},  {
+      "val": [
+        "semolina"
+      ],
+      "dim": "sub_category",
+      "op": "="
+    }]})
     out = market_share_analysis(skill_input)
     preview_skill(market_share_analysis, out)

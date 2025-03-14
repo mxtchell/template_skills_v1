@@ -1562,7 +1562,7 @@ class MarketShareBreakdown:
                 drilldown = breakout.get("drilldown")
 
                 # pull data using query_filters
-                df = pull_data(metrics=[self.metric], filters=[query_filters, self.trend_period],
+                df = pull_data(metrics=[self.metric], filters=query_filters + [self.trend_period],
                                breakouts=[breakout_dim, self.period_col],
                                order_cols=[{"col": self.period_col, "direction": 'ASC'}])
                 self.check_row_limit(df)
