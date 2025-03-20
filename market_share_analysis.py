@@ -154,7 +154,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings):
 
 
 MAX_PROMPT = """
-Anwer user question in 30 words or less using following facts: {{facts}}
+Answer user question in 30 words or less using following facts: {{facts}}
 """
 
 INSIGHT_PROMPT = """
@@ -267,7 +267,7 @@ TEMPLATE = """
                 {% if loop.index0 == (df.columns | length) - 1 %}
                     {"name": "{{ col }}"}
                 {% elif loop.index0 == 0 %}
-                    {"name": "{{ col }}", "style": {"textAlign": "left"}},
+                    {"name": "{{ col }}", "style": {"textAlign": "left", "white-space": "pre"}},
                 {% else %}
                     {"name": "{{ col }}"},
                 {% endif %}

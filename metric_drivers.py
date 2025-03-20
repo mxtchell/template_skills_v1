@@ -132,8 +132,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings):
         viz_list.append(SkillVisualization(title=name, layout=rendered))
     return viz_list, insights, max_response_prompt
 
-MAX_PROMPT = """
-"""
+MAX_PROMPT = """Answer user question in 30 words or less using following facts: {{facts}}"""
 
 INSIGHT_PROMPT = """
 {{base_prompt}} Write a short headline followed by a 60 word or less paragraph about using facts below.
@@ -258,6 +257,8 @@ TEMPLATE = """
             {% for col in df.columns %}
                 {% if loop.index0 == (df.columns | length) - 1 %}
                     {"name": "{{ col }}"}
+                {% elif loop.index0 == 0 %}
+                    {"name": "{{ col }}", "style": {"textAlign": "left", "white-space": "pre"}},
                 {% else %}
                     {"name": "{{ col }}"},
                 {% endif %}
@@ -267,10 +268,6 @@ TEMPLATE = """
         "styles": {
                     "alternateRowColor": "#f9f9f9",
                     "fontFamily": "Arial, sans-serif",
-                    "td": {
-                      "white-space": "pre",
-                      "textAlign": "left"
-                    },
                     "th": {
                         "backgroundColor": "#FOFOFO",
                         "color": "#000000",

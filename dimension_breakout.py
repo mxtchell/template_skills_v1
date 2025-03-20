@@ -80,7 +80,12 @@ def simple_breakout(parameters: SkillInput):
     insights_dfs = [env.ba.df_notes, env.ba.breakout_facts, env.ba.subject_facts]
     followups = env.ba.get_suggestions()
 
-    viz, insights, final_prompt = render_layout(tables, env.ba.title, env.ba.subtitle, insights_dfs, env.ba.warning_message)
+    viz, insights, final_prompt = render_layout(tables,
+                                                env.ba.title,
+                                                env.ba.subtitle,
+                                                insights_dfs,
+                                                env.ba.warning_message,
+                                                env.ba.footnotes)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -89,9 +94,17 @@ def simple_breakout(parameters: SkillInput):
         parameter_display_descriptions=param_info,
         followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")]
     )
-    
-    
-def render_layout(tables, title, subtitle, insights_dfs, warnings):
+
+def find_footnote(footnotes, df):
+    footnotes = footnotes or {}
+    dim_note = None
+    for col in df.columns:
+        if col in footnotes:
+            dim_note = footnotes.get(col)
+            break
+    return dim_note
+
+def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes):
     height = 80
     template = jinja2.Template(TEMPLATE)
     facts = []
@@ -105,21 +118,22 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings):
     ar_utils = ArUtils()
     insights = ar_utils.get_llm_response(insight_template)
     viz_list = []
-
     for name, table in tables.items():
+        dim_note = find_footnote(footnotes, table)
         template_vars = {
             'dfs': [table],
             "height": height,
             "title": title,
             "subtitle": subtitle,
-            "warnings": warnings
+            "warnings": warnings,
+            "dim_note": dim_note
         }
         rendered = template.render(**template_vars)
         viz_list.append(SkillVisualization(title=name, layout=rendered))
     return viz_list, insights, max_response_prompt
 
 MAX_PROMPT = """
-Anwer user question in 30 words or less using following facts: {{facts}}
+Answer user question in 30 words or less using following facts: {{facts}}
 """
 
 INSIGHT_PROMPT = """
@@ -232,6 +246,8 @@ TEMPLATE = """
             {% for col in df.columns %}
                 {% if loop.index0 == (df.columns | length) - 1 %}
                     {"name": "{{ col }}"}
+                {% elif loop.index0 == 0 %}
+                    {"name": "{{ col }}", "style": {"textAlign": "left", "white-space": "pre"}},
                 {% else %}
                     {"name": "{{ col }}"},
                 {% endif %}
@@ -256,6 +272,26 @@ TEMPLATE = """
     }{% if not loop.last %},{% endif %}
     {% set ns.counter = height*loop.index %}
     {% endfor %}
+    {% if dim_note %}
+        ,{
+            "name": "footer",
+            "type": "Header",
+            "row": {{ns.counter + chart_start}},
+            "column": 1,
+            "width": 120,
+            "height": 2,
+            "style": {
+                "textAlign": "left",
+                "verticalAlign": "middle",
+                "fontSize": "14px",
+                "color": "#333",
+                "fontFamily": "Arial, sans-serif",
+                "fontStyle": "italic",
+                "fontWeight": "normal"
+            },
+            "text": "*{{dim_note}}"
+        }
+    {% endif %}
 ]
 }
 """
