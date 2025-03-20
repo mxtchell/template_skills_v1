@@ -8,7 +8,7 @@ annotated-types==0.7.0
     # via
     #   -c platform_constraints.txt
     #   pydantic
-answerrocket-client==0.2.36
+answerrocket-client==0.2.37
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -86,7 +86,7 @@ idna==3.10
     #   anyio
     #   email-validator
     #   httpx
-iniconfig==2.0.0
+iniconfig==2.1.0
     # via pytest
 jinja2==3.1.5
     # via
@@ -199,7 +199,7 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
-skill-framework[ui]==0.3.1
+skill-framework[ui]==0.3.6
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
