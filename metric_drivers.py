@@ -6,7 +6,8 @@ from skill_framework import SkillInput, SkillVisualization, skill, SkillParamete
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
-from ar_analytics import DriverAnalysis, DriverAnalysisTemplateParameterSetup, ArUtils, defaults
+from ar_analytics import DriverAnalysis, DriverAnalysisTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import metric_driver_analysis_config
 
 import jinja2
 import logging
@@ -14,33 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 @skill(
-    name="Metric Drivers",
-    llm_name="metric_driver_analysis",
-    description="""Utilize this skill to dissect and comprehend the influence of various metrics and dimensions on the performance of a specific metric. 
-This analysis is useful to explain overall performance of a [dim value].
-It is helpful to understand what's driving the changes in metrics. Explanations include driving metrics, changes across different breakouts and comparisons. This skill is designed to address "Why" questions or to provide explanations upon request. 
-If a time period is one of the breakouts, this may not be the correct skill.""",
-    capabilities="""This analytics skill enables users to explore and understand the factors driving changes in metrics across various [dimensions].
-Users can analyze current vs. previous values, identify growth trends, and discover declines. 
-With interactive drill-downs, each metric driver is clickable for detailed insights, making it easy to answer "Why" questions and explain observed performance patterns.
-The tool provides a comprehensive view of overall performance and key contributors, helping users pinpoint areas that impact KPIs and guiding strategic decisions.""",
-    limitations="""Time period comparisons are not possible.
-Table columns are predefined and cannot be manipulated.""",
-    example_questions="""What's driving {metric} in {dimension}?
-What is driving {dimension} performance?
-Explain {metric} growth in {dimension}""",
-    parameter_guidance="""- TIME PERIOD HANDLING: Use this section to better understand time periods for the 'periods' parameter selection: 
-  - today is {{today}}. 
-  - The data ends on {{copilot_dataset_end_date}}.
-  -the latest period is the most recent full period in relation to the end of the data on {{copilot_dataset_end_date}}.
-  - Phrases such as 'YTD', 'ytd', and 'this year' phrases result in time period analyses that end with the last date in the data. Prioritize the user's time period request when given. 
-  -Phrases such as 'last X months' result in a time period analysis of X number of months of data ending with the last date in the data. 
-  -For phrases requesting to compare 2 years or time periods, such as 'YYYY vs. YYYY', use the most recent YYYY as the 'period' parameter and add 'Y/Y' for the 'growth' parameter to show the comparison (vs.) to the previous year. 
-  -If the user asks to compare 2 non-consecutive years, let them know you can only analyze consecutive time periods to show year-over-year (Y/Y) or period-over-period (P/P) growth. 
-  -For phrases such as 'Last X months vs. last year',  let's break this down into 2 sections. ('last X months') and ('vs. last year'). Use ('last X months') as the time period and use (vs. last year) to add 'Y/Y' for the 'Growth' parameter. 
-  - For phrases such as 'annual growth' show the MAT time period and set the 'growth' parameter to 'Y/Y'.
-  - for phrases such as 'vs. YA', choose 'Y/Y' for the growth parameter. Set the period parameter to the baseline time period the user wishes to compare to.
-- If no time period is provided, execute using skill default.""",
+    name=metric_driver_analysis_config.name,
+    llm_name=metric_driver_analysis_config.llm_name,
+    description=metric_driver_analysis_config.description,
+    capabilities=metric_driver_analysis_config.capabilities,
+    limitations=metric_driver_analysis_config.limitations,
+    example_questions=metric_driver_analysis_config.example_questions,
+    parameter_guidance=metric_driver_analysis_config.parameter_guidance,
     parameters=[
         SkillParameter(
             name="periods",
@@ -83,13 +64,13 @@ Explain {metric} growth in {dimension}""",
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value=defaults.default_max_prompt
+            default_value=metric_driver_analysis_config.max_prompt
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value=defaults.driver_insight_prompt
+            default_value=metric_driver_analysis_config.insight_prompt
         )
     ]
 )
