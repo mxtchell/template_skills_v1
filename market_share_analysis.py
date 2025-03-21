@@ -6,7 +6,8 @@ from skill_framework import SkillInput, SkillVisualization, skill, SkillParamete
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
-from ar_analytics import MarketShareBreakdown, MSBTemplateParameterSetup, ArUtils, defaults
+from ar_analytics import MarketShareBreakdown, MSBTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import market_share_analysis_config
 
 import jinja2
 import logging
@@ -14,32 +15,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 @skill(
-    name="Market Share Analysis",
-    llm_name="market_share_analysis",
-    description="""Use this skill to analyze the drivers of a subject's share.
-The drivers are derived from the available metrics and the dimensions in the dataset.
-If a time period is one of the breakouts, this may not be the correct skill.""",
-    capabilities="""Provides a table with detailed market share analysis by subject, tracking year-over-year changes, and impacting metrics. It includes visual trend indicators and highlights the subject for focused insights.""",
-    limitations="""Acceptable subjects are limited to any value from the following dimensions: brand, maufacturer, sub brand. 
-Time period comparisons are not possible.
-Table columns are predefined and cannot be manipulated.
-Dimension included in the analysis cannot be manipulated.""",
-    example_questions="""How is [subject] performing
-Why is [subject] losing share?
-What is driving [subject] performance?
-Explain subject] share growth""",
-    parameter_guidance="""- TIME PERIOD HANDLING: Use this section to better understand time periods for the 'periods' parameter selection: 
-  - today is {{today}}. 
-  - The data ends on {{copilot_dataset_end_date}}.
-  -the latest period is the most recent full period in relation to the end of the data on {{copilot_dataset_end_date}}.
-  - Phrases such as 'YTD', 'ytd', and 'this year' phrases result in time period analyses that end with the last date in the data. Prioritize the user's time period request when given. 
-  -Phrases such as 'last X months' result in a time period analysis of X number of months of data ending with the last date in the data. 
-  -For phrases requesting to compare 2 years or time periods, such as 'YYYY vs. YYYY', use the most recent YYYY as the 'period' parameter and add 'Y/Y' for the 'growth' parameter to show the comparison (vs.) to the previous year. 
-  -If the user asks to compare 2 non-consecutive years, let them know you can only analyze consecutive time periods to show year-over-year (Y/Y) or period-over-period (P/P) growth. 
-  -For phrases such as 'Last X months vs. last year',  let's break this down into 2 sections. ('last X months') and ('vs. last year'). Use ('last X months') as the time period and use (vs. last year) to add 'Y/Y' for the 'Growth' parameter. 
-  - For phrases such as 'annual growth' show the MAT time period and set the 'growth' parameter to 'Y/Y'.
-  - for phrases such as 'vs. YA', choose 'Y/Y' for the growth parameter. Set the period parameter to the baseline time period the user wishes to compare to.
-- If no time period is provided, execute using skill default.""",
+    name=market_share_analysis_config.name,
+    llm_name=market_share_analysis_config.llm_name,
+    description=market_share_analysis_config.description,
+    capabilities=market_share_analysis_config.capabilities,
+    limitations=market_share_analysis_config.limitations,
+    example_questions=market_share_analysis_config.example_questions,
+    parameter_guidance=market_share_analysis_config.parameter_guidance,
     parameters=[
         SkillParameter(
             name="metric",
@@ -101,13 +83,13 @@ Explain subject] share growth""",
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value=defaults.default_max_prompt
+            default_value=market_share_analysis_config.max_prompt
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value=defaults.market_share_insight_prompt
+            default_value=market_share_analysis_config.insight_prompt
         )
     ]
 )

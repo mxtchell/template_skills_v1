@@ -5,7 +5,8 @@ from skill_framework import SkillInput, SkillVisualization, skill, SkillParamete
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
-from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, defaults, ArUtils
+from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import dimension_breakout_config
 
 import jinja2
 import logging
@@ -13,47 +14,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 @skill(
-    name="Dimension Breakout",
-    llm_name="dimension_breakout",
-    description="""The breakout skill is designed to enable comparisons and analyses of subjects that belong to the same group to show how these subjects rank or differ from one another. 
-This skill also provides multiple KPIs across a subject. 
-This skill should answer questions without breakouts, like a single value. 
-If a time period is one of the breakouts, this may not be the correct skill. However, if a single time period is asked for this likely is the correct skill to choose. 
-For single-point growth questions e.g. "what was [filter] growth in[period]", use this skill to analyze within the relevant dimension.""",
-    capabilities="""Provides a table based on the the inputed metric and given filters, and can breakout by dimenion(s) for a time period. When broken out, each dimension value is ranked by desired sort.  
-Summative metrics only are also shown on bridge chart (decomposition).
-Users can have a scalar value return with specific filters, or have one or more breakouts when requested. 
-Users can add in additional metrics columns and metric growth columns by request. 
-Users can ask for year over year or period over period growth.""",
-    limitations="""-Users cannot remove specific columns, they can only add metrics and enable or disable growth metric columns. For example, if a user asks to remove the "Sales change % column" they should be told that is not possible. 
--When users asked to breakout by multiple dimensions, they will get a separate table for each dimension. They will not receive a table that includes both breakouts in one view.
-- Users can't see the data on chart, just table
-- Users cannot reorder columns
-- users can't see the details of share value trended over time.""",
-    example_questions="""- How is [filter] performing in each {dimension] vs. competition?
-- Which [dimension]s or {dimension]s show the highest growth of [metric]? 
-- Which [dimension]s are declining the most?
-- What are the highest [metric] [dimension] in [filter] this [period]?
-- What is the [metric] of the highest [metric] [dimension]?  
-- Which [dimension]s are showing the most growth in [filter]?""",
-    parameter_guidance="""<TIME PERIODHANDLING>
-- TIME PERIOD HANDLING: Use this section to better understand time periods for the 'periods' parameter selection: 
-  - today is {{today}}. 
-  - The data ends on {{copilot_dataset_end_date}}.
-  -the latest period is the most recent full period in relation to the end of the data on {{copilot_dataset_end_date}}.
-  - Phrases such as 'YTD', 'ytd', and 'this year' phrases result in time period analyses that end with the last date in the data. Prioritize the user's time period request when given. 
-  -Phrases such as 'last X months' result in a time period analysis of X number of months of data ending with the last date in the data. 
-  -For phrases requesting to compare 2 years or time periods, such as 'YYYY vs. YYYY', use the most recent YYYY as the 'period' parameter and add 'Y/Y' for the 'growth' parameter to show the comparison (vs.) to the previous year. 
-  -If the user asks to compare 2 non-consecutive years, let them know you can only analyze consecutive time periods to show year-over-year (Y/Y) or period-over-period (P/P) growth. 
-  -For phrases such as 'Last X months vs. last year',  let's break this down into 2 sections. ('last X months') and ('vs. last year'). Use ('last X months') as the time period and use (vs. last year) to add 'Y/Y' for the 'Growth' parameter. 
-  - For phrases such as 'annual growth' show the MAT time period and set the 'growth' parameter to 'Y/Y'.
-  - for phrases such as 'vs. YA', choose 'Y/Y' for the growth parameter. Set the period parameter to the baseline time period the user wishes to compare to.
-- If no time period is provided, execute using skill default.
-<TIME PERIODHANDLING>
-
-<BREAKOUT DIMENSION>
-include here just categorical dimension. This skill does not breakout by data dimension. 
-<BREAKOUT DIMENSION>""",
+    name=dimension_breakout_config.name,
+    llm_name=dimension_breakout_config.llm_name,
+    description=dimension_breakout_config.description,
+    capabilities=dimension_breakout_config.capabilities,
+    limitations=dimension_breakout_config.limitations,
+    example_questions=dimension_breakout_config.example_questions,
+    parameter_guidance=dimension_breakout_config.parameter_guidance,
     parameters=[
         SkillParameter(
             name="periods",
@@ -102,13 +69,13 @@ include here just categorical dimension. This skill does not breakout by data di
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value=defaults.default_max_prompt
+            default_value=dimension_breakout_config.max_prompt
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value=defaults.breakout_insight_prompt
+            default_value=dimension_breakout_config.insight_prompt
         )
     ]
 )

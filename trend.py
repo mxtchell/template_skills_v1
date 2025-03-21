@@ -5,7 +5,8 @@ from skill_framework import SkillVisualization, skill, SkillParameter, SkillInpu
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
-from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils, defaults
+from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import trend_analysis_config
 
 import jinja2
 import logging
@@ -15,27 +16,13 @@ RUNNING_LOCALLY = False
 logger = logging.getLogger(__name__)
 
 @skill(
-    name="Trend Analysis",
-    llm_name="trend_analysis",
-    description="""Trend Analysis is useful in understanding how metrics have evolved historically across multiple time periods and for observing patterns among different subjects or dimensional categories. 
-It can show multiple metrics side-by-side over multiple time periods. Use this skill if a time period breakout is requested. 
-Do not select this time period if a single period of analysis is selected, even if that request is for growth of that single period.
-It does not show metrics for single time periods and it does not forecast.
-For single-point growth questions e.g. "what was [filter] growth in [period]", use the dimension breakout skill to analyze within the relevant dimension.""",
-    capabilities="""Provides a visual of a metric's trend across a given time period. 
-Can have filters applied and be broken out by a single dimension. 
-The time period and time granularity can be adjusted by user input. 
-The user does not have to break out by a dimension. 
-Users can breakout by multiple dimensions, but they will be put into separate charts.
-Additionally, growth can be enabled to show how growth has trended over time.""",
-    limitations="""Time period comparisons are not possible.
-Users can't change chart type.""",
-    example_questions="""What's the trend of the [filter] [metric].
-How is [metric] for [filter] evolving.
-How has [filter] grown in the market over the past five years?
-How is [filter] [metric] trending by [dimension] since [year]?""",
-    parameter_guidance="""- For time granularity, make assumptions where needed based on conversation or use the date granularity from the dataset as default.
-Place any date dimension in the time granularity parameter, not breakout parameter.""",
+    name=trend_analysis_config.name,
+    llm_name=trend_analysis_config.llm_name,
+    description=trend_analysis_config.description,
+    capabilities=trend_analysis_config.capabilities,
+    limitations=trend_analysis_config.limitations,
+    example_questions=trend_analysis_config.example_questions,
+    parameter_guidance=trend_analysis_config.parameter_guidance,
     parameters=[
         SkillParameter(
             name="periods",
@@ -79,13 +66,13 @@ Place any date dimension in the time granularity parameter, not breakout paramet
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value=defaults.default_max_prompt
+            default_value=trend_analysis_config.max_prompt
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value=defaults.trend_insight_prompt
+            default_value=trend_analysis_config.insight_prompt
         )
     ]
 )
