@@ -115,7 +115,7 @@ def trend(parameters: SkillInput):
 
 TEMPLATE = """
 {
-"type": "GridPanel",
+"type": "Document",
 "rows": 100,
 "columns": 160,
 "rowHeight": "1.11%",
@@ -201,7 +201,7 @@ TEMPLATE = """
 
 TABLE_TEMPLATE = """
 {
-"type": "GridPanel",
+"type": "Document",
 "rows": 100,
 "columns": 160,
 "rowHeight": "1.11%",

@@ -158,7 +158,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, ma
 
 TEMPLATE = """
 {
-"type": "GridPanel",
+"type": "Document",
 "rows": 100,
 "columns": 160,
 "rowHeight": "1.11%",
