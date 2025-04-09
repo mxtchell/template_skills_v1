@@ -8,7 +8,7 @@ annotated-types==0.7.0
     # via
     #   -c platform_constraints.txt
     #   pydantic
-answerrocket-client==0.2.42
+answerrocket-client==0.2.43
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@1113da3bd0ff68da9314a3aad8166ebd4e4a4672
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.5
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in

@@ -80,13 +80,13 @@ logger = logging.getLogger(__name__)
             name="table_viz_layout",
             parameter_type="visualization",
             description="Table Viz Layout",
-            default_value=default_trend_chart_layout
+            default_value=default_table_layout
         ),
         SkillParameter(
             name="chart_viz_layout",
             parameter_type="visualization",
             description="Chart Viz Layout",
-            default_value=default_table_layout
+            default_value=default_trend_chart_layout
         )
     ]
 )

@@ -12,6 +12,7 @@ from ar_analytics.defaults import metric_driver_analysis_config, default_table_l
 
 import jinja2
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +157,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
         hide_footer = True
         table_vars = get_table_layout_vars(table)
         table_vars["hide_footer"] = hide_footer
-        rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
+        rendered = wire_layout(json.loads(viz_layout), {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 
     return viz_list, insights, max_response_prompt, export_data
