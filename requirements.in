@@ -7,4 +7,4 @@ matplotlib
 sqlglot
 jinja2
 pytest
-git+https://bitbucket.org/aglabs/ar-analytics.git#egg=ar-analytics
+git+https://bitbucket.org/aglabs/ar-analytics.git@1113da3bd0ff68da9314a3aad8166ebd4e4a4672#egg=ar-analytics

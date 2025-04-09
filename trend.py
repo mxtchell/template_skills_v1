@@ -4,12 +4,14 @@ from types import SimpleNamespace
 from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, ParameterDisplayDescription
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
+from skill_framework.layouts import wire_layout
 
 from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import trend_analysis_config
+from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, get_table_layout_vars
 
 import jinja2
 import logging
+import json
 
 RUNNING_LOCALLY = False
 
@@ -73,6 +75,18 @@ logger = logging.getLogger(__name__)
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
             default_value=trend_analysis_config.insight_prompt
+        ),
+        SkillParameter(
+            name="table_viz_layout",
+            parameter_type="visualization",
+            description="Table Viz Layout",
+            default_value=default_trend_chart_layout
+        ),
+        SkillParameter(
+            name="chart_viz_layout",
+            parameter_type="visualization",
+            description="Chart Viz Layout",
+            default_value=default_table_layout
         )
     ]
 )
@@ -90,270 +104,61 @@ def trend(parameters: SkillInput):
     env.trend = AdvanceTrend.from_env(env=env)
     df = env.trend.run_from_env()
     param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.trend.paramater_display_infomation.items()]
-    charts = env.trend.default_chart
     tables = [env.trend.display_dfs.get("Metrics Table")]
 
     insights_dfs = [env.trend.df_notes, env.trend.facts, env.trend.top_facts, env.trend.bottom_facts]
 
+    charts = env.trend.get_dynamic_layout_chart_vars()
+
     viz, insights, final_prompt = render_layout(charts,
-                                                [tables],
+                                                tables,
                                                 env.trend.title,
                                                 env.trend.subtitle,
                                                 insights_dfs,
                                                 env.trend.warning_message,
                                                 parameters.arguments.max_prompt,
-                                                parameters.arguments.insight_prompt)
+                                                parameters.arguments.insight_prompt,
+												parameters.arguments.table_viz_layout,
+												parameters.arguments.chart_viz_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
-        narrative=insights,
+        narrative=None,
         visualizations=viz,
         parameter_display_descriptions=param_info,
         followup_questions=[],
         export_data=[ExportData(name="Metrics Table", data=tables[0])]
     )
 
-TEMPLATE = """
-{
-"type": "Document",
-"rows": 100,
-"columns": 160,
-"rowHeight": "1.11%",
-"colWidth": "0.625%",
-"gap": "0px",
-"style": {
-    "backgroundColor": "white",
-    "border": "1px solid #ccc",
-    "width": "100%",
-    "height": "100%"
-},
- "children": [
-    {% set ns = namespace(counter=0) %}
-    {
-            "name": "mainTitle",
-            "type": "Header",
-            "row": 0,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "18px",
-                "fontWeight": "bold",
-                "color": "#333",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{title}}"
-    },
-    {
-            "name": "subtitle",
-            "type": "Header",
-            "row": 4,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "12px",
-                "color": "#888",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{subtitle}}"
-    },
-    {% set chart_start = 7 %}
-    {% if warnings %}
-        {% set chart_start = 10 %}
-        {
-                "name": "subtitle",
-                "type": "Header",
-                "row": 7,
-                "column": 1,
-                "width": 158,
-                "height": 2,
-                "style": {
-                    "textAlign": "left",
-                    "verticalAlign": "middle",
-                    "color": "#888",
-                    "fontFamily": "Arial, sans-serif",
-                    "backgroundColor": "#FFF8E1",
-                    "borderRadius": "10px"
-                },
-                "text": "{{warnings}}"
-        },
-    {% endif %}
-    {% for df in dfs %}
-        {
-        "type": "HighchartsChart",
-        "row": {{ns.counter + chart_start}},
-        "column": 1,
-        "width": 158,
-        "height": {{height}},
-        "options": {{df}}
-    }
-    {% if not loop.last %},{% endif %}
-    {% set ns.counter = height*loop.index %}
-    {% endfor %}
-]
-}
-"""
+def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout):
+	facts = []
+	for i_df in insights_dfs:
+		facts.append(i_df.to_dict(orient='records'))
 
-TABLE_TEMPLATE = """
-{
-"type": "Document",
-"rows": 100,
-"columns": 160,
-"rowHeight": "1.11%",
-"colWidth": "0.625%",
-"gap": "0px",
-"style": {
-    "backgroundColor": "white",
-    "border": "1px solid #ccc",
-    "width": "100%",
-    "height": "100%"
-},
- "children": [
-    {% set ns = namespace(counter=0) %}
-    {
-            "name": "mainTitle",
-            "type": "Header",
-            "row": 0,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "18px",
-                "fontWeight": "bold",
-                "color": "#333",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{title}}"
-    },
-    {
-            "name": "subtitle",
-            "type": "Header",
-            "row": 4,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "12px",
-                "color": "#888",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{subtitle}}"
-    },
-    {% set chart_start = 7 %}
-    {% if warnings %}
-        {% set chart_start = 10 %}
-        {
-                "name": "subtitle",
-                "type": "Header",
-                "row": 7,
-                "column": 1,
-                "width": 158,
-                "height": 2,
-                "style": {
-                    "textAlign": "left",
-                    "verticalAlign": "middle",
-                    "color": "#888",
-                    "fontFamily": "Arial, sans-serif",
-                    "backgroundColor": "#FFF8E1",
-                    "borderRadius": "10px"
-                },
-                "text": "{{warnings}}"
-        },
-    {% endif %}
-    {% for df in dfs %}
-        {
-        "type": "DataTable",
-        "row": {{ns.counter + chart_start}},
-        "column": 1,
-        "width": 158,
-        "height": {{height}},
-        "columns": [
-            {% set total_cols = df.columns | length  %}
-            {% for col in df.columns %}
-                {% if loop.index0 == (df.columns | length) - 1 %}
-                    {"name": "{{ col }}"}
-                {% elif loop.index0 == 0 %}
-                    {"name": "{{ col }}", "style": {"textAlign": "left", "white-space": "pre"}},
-                {% else %}
-                    {"name": "{{ col }}"},
-                {% endif %}
-            {% endfor %}
-        ],
-        "data": {{ df.fillna('N/A').to_numpy().tolist() | tojson }},
-        "styles": {
-                    "alternateRowColor": "#f9f9f9",
-                    "fontFamily": "Arial, sans-serif",
-                    "th": {
-                        "backgroundColor": "#FOFOFO",
-                        "color": "#000000",
-                        "fontWeight": "bold"
-                    },
-                    "caption": {
-                        "backgroundColor": "#32ea05",
-                        "color": "#000000",
-                        "fontWeight": "bold",
-                        "fontSize": "10pt"
-                    }
-        }
-    }{% if not loop.last %},{% endif %}
-    {% set ns.counter = height*loop.index %}
-    {% endfor %}
-]
-}
-"""
+	insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
+	max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
 
-def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt):
-    DEFAULT_HEIGHT = 80
-    template = jinja2.Template(TEMPLATE)
-    table_template = jinja2.Template(TABLE_TEMPLATE)
-    facts = []
-    for i_df in insights_dfs:
-        facts.append(i_df.to_dict(orient='records'))
+	# adding insights
+	ar_utils = ArUtils()
+	insights = ar_utils.get_llm_response(insight_template)
 
-    insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
-    max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
-    insights = insight_template
+	tab_vars = {"headline": title if title else "Total",
+				"sub_headline": subtitle or "Trend Analysis",
+				"hide_growth_warning": False if warnings else True,
+				"exec_summary": insights if insights else "No Insight.",
+				"warning": warnings}
 
-    viz = []
-    for name, chart in charts.items():
-        if name.strip().startswith("·"):
-            name = name.replace("·", "").strip()
-        height = (DEFAULT_HEIGHT // len(chart)) + 1
-        template_vars = {
-            'dfs': chart,
-            "height": height,
-            "title": title,
-            "subtitle": subtitle,
-            "warnings": warnings
-        }
-        rendered = template.render(**template_vars)
-        viz.append(SkillVisualization(title=name, layout=rendered))
+	viz = []
+	for name, chart_vars in charts.items():
+		rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
+		viz.append(SkillVisualization(title=name, layout=rendered))
 
 
-    table_template_vars = {
-        'dfs': tables[0],
-        "height": DEFAULT_HEIGHT,
-        "title": title,
-        "subtitle": subtitle,
-        "warnings": warnings
-    }
-    table = table_template.render(**table_template_vars)
-    viz.append(SkillVisualization(title="Metrics Table", layout=table))
+	table_vars = get_table_layout_vars(tables[0])
+	table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
+	viz.append(SkillVisualization(title="Metrics Table", layout=table))
 
-    # adding insights
-    ar_utils = ArUtils()
-    rendered_insight = ar_utils.get_llm_response(insights)
-
-    return viz, rendered_insight, max_response_prompt
+	return viz, insights, max_response_prompt
 
 if __name__ == '__main__':
     skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["mat jun 2021"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})

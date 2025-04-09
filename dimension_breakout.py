@@ -4,12 +4,14 @@ from types import SimpleNamespace
 from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, ParameterDisplayDescription
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
+from skill_framework.layouts import wire_layout
 
 from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import dimension_breakout_config
+from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars
 
 import jinja2
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,12 @@ logger = logging.getLogger(__name__)
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
             default_value=dimension_breakout_config.insight_prompt
+        ),
+        SkillParameter(
+            name="table_viz_layout",
+            parameter_type="visualization",
+            description="Table Viz Layout",
+            default_value=default_table_layout
         )
     ]
 )
@@ -105,11 +113,12 @@ def simple_breakout(parameters: SkillInput):
                                                             env.ba.warning_message,
                                                             env.ba.footnotes,
                                                             parameters.arguments.max_prompt,
-                                                            parameters.arguments.insight_prompt)
+                                                            parameters.arguments.insight_prompt,
+                                                            parameters.arguments.table_viz_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
-        narrative=insights,
+        narrative=None,
         visualizations=viz,
         parameter_display_descriptions=param_info,
         followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")],
@@ -125,9 +134,7 @@ def find_footnote(footnotes, df):
             break
     return dim_note
 
-def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt):
-    height = 80
-    template = jinja2.Template(TEMPLATE)
+def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -140,155 +147,27 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, ma
     insights = ar_utils.get_llm_response(insight_template)
     viz_list = []
     export_data = {}
+
+    general_vars = {"headline": title if title else "Total",
+					"sub_headline": subtitle or "Breakout Analysis",
+					"hide_growth_warning": False if warnings else True,
+					"exec_summary": insights if insights else "No Insights.",
+					"warning": warnings}
+
+    viz_layout = json.loads(viz_layout)
+
     for name, table in tables.items():
         export_data[name] = table
         dim_note = find_footnote(footnotes, table)
-        template_vars = {
-            'dfs': [table],
-            "height": height,
-            "title": title,
-            "subtitle": subtitle,
-            "warnings": warnings,
-            "dim_note": dim_note
-        }
-        rendered = template.render(**template_vars)
+        hide_footer = False if dim_note else True
+        table_vars = get_table_layout_vars(table)
+        table_vars["hide_footer"] = hide_footer
+        rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
+
     return viz_list, insights, max_response_prompt, export_data
 
-
-TEMPLATE = """
-{
-"type": "Document",
-"rows": 100,
-"columns": 160,
-"rowHeight": "1.11%",
-"colWidth": "0.625%",
-"gap": "0px",
-"style": {
-    "backgroundColor": "white",
-    "border": "1px solid #ccc",
-    "width": "100%",
-    "height": "100%"
-},
- "children": [
-    {% set ns = namespace(counter=0) %}
-    {
-            "name": "mainTitle",
-            "type": "Header",
-            "row": 0,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "18px",
-                "fontWeight": "bold",
-                "color": "#333",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{title}}"
-    },
-    {
-            "name": "subtitle",
-            "type": "Header",
-            "row": 4,
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "12px",
-                "color": "#888",
-                "fontFamily": "Arial, sans-serif"
-            },
-            "text": "{{subtitle}}"
-    },
-    {% set chart_start = 7 %}
-    {% if warnings %}
-        {% set chart_start = 10 %}
-        {
-                "name": "subtitle",
-                "type": "Header",
-                "row": 7,
-                "column": 1,
-                "width": 158,
-                "height": 2,
-                "style": {
-                    "textAlign": "left",
-                    "verticalAlign": "middle",
-                    "color": "#333",
-                    "fontFamily": "Arial, sans-serif",
-                    "backgroundColor": "#FFF8E1",
-                    "borderRadius": "10px"
-                },
-                "text": "{{warnings}}"
-        },
-    {% endif %}
-    {% for df in dfs %}
-        {
-        "type": "DataTable",
-        "row": {{ns.counter + chart_start}},
-        "column": 1,
-        "width": 158,
-        "height": {{height}},
-        "columns": [
-            {% set total_cols = df.columns | length  %}
-            {% for col in df.columns %}
-                {% if loop.index0 == (df.columns | length) - 1 %}
-                    {"name": "{{ col }}"}
-                {% elif loop.index0 == 0 %}
-                    {"name": "{{ col }}", "style": {"textAlign": "left", "white-space": "pre"}},
-                {% else %}
-                    {"name": "{{ col }}"},
-                {% endif %}
-            {% endfor %}
-        ],
-        "data": {{ df.fillna('N/A').to_numpy().tolist() | tojson }},
-        "styles": {
-                    "alternateRowColor": "#f9f9f9",
-                    "fontFamily": "Arial, sans-serif",
-                    "th": {
-                        "backgroundColor": "#FOFOFO",
-                        "color": "#000000",
-                        "fontWeight": "bold"
-                    },
-                    "caption": {
-                        "backgroundColor": "#32ea05",
-                        "color": "#000000",
-                        "fontWeight": "bold",
-                        "fontSize": "10pt"
-                    }
-        }
-    }{% if not loop.last %},{% endif %}
-    {% set ns.counter = height*loop.index %}
-    {% endfor %}
-    {% if dim_note %}
-        ,{
-            "name": "footer",
-            "type": "Header",
-            "row": {{ns.counter + chart_start}},
-            "column": 1,
-            "width": 120,
-            "height": 2,
-            "style": {
-                "textAlign": "left",
-                "verticalAlign": "middle",
-                "fontSize": "14px",
-                "color": "#333",
-                "fontFamily": "Arial, sans-serif",
-                "fontStyle": "italic",
-                "fontWeight": "normal"
-            },
-            "text": "*{{dim_note}}"
-        }
-    {% endif %}
-]
-}
-"""
-
 if __name__ == '__main__':
-    skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
+    skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume", "sales_share"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
     out = simple_breakout(skill_input)
     preview_skill(simple_breakout, out)
