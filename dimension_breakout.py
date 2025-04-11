@@ -162,6 +162,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, ma
         hide_footer = False if dim_note else True
         table_vars = get_table_layout_vars(table)
         table_vars["hide_footer"] = hide_footer
+        table_vars["footer"] = f"*{dim_note.strip()}" if dim_note else "No additional info."
         rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 

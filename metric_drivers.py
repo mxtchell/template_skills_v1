@@ -125,7 +125,7 @@ def simple_metric_driver(parameters: SkillInput):
 
     return SkillOutput(
         final_prompt=final_prompt,
-        narrative=insights,
+        narrative=None,
         visualizations=viz,
         parameter_display_descriptions=param_info,
         followup_questions=[],
