@@ -219,7 +219,7 @@ def get_data(
         if is_subject:
             row_info["style"] = {'background-color': '#FFF0BE'}
 
-        data.append(row_info)
+        return row_info
 
     data = []
 
@@ -265,7 +265,7 @@ def get_table_layout_vars_msa(
         decomposition_metric_drivers: Dict[str, List[str]],
         ignore_cols=[], 
         highlight_col="is_subject", 
-        followup_col="followup_nl", 
+        followup_col="msg", 
         sparkline_col="sparkline"
     ):
     """
@@ -296,10 +296,7 @@ def get_table_layout_vars_msa(
     subject_metric_driver_metrics_reverse = {metric_drivers_labels[item]: k for k, v in subject_metric_drivers.items() for item in v}
     decomposition_metric_driver_metrics_reverse = {metric_drivers_labels[item]: k for k, v in decomposition_metric_drivers.items() for item in v}
 
-    # share_col_def = {"name": share_metric_label, "group": []}
     for col in columns:
-        if col in ['parent_dim_member', 'is_subject', 'is_collapsible', 'msg']:
-            continue
 
         group = share_metric_label
         if col in subject_metric_driver_metrics_reverse:
@@ -307,12 +304,12 @@ def get_table_layout_vars_msa(
         elif col in decomposition_metric_driver_metrics_reverse:
             group = decomposition_metric_driver_metrics_reverse[col]
 
-        if col == dim_member_col:
+        if col == sparkline_col:
+            col_defs.append({"name": sparkline_col, "sparkLineOptions": {"colors": ["blue"]}, "group": group})
+        elif col == dim_member_col:
             col_defs.append({"name": col, "style": {"textAlign": "left", "white-space": "pre"}, "group": group})
         else:
             col_defs.append({"name": col, "group": group})
-
-    # col_defs = [share_col_def]
 
     table_vars["data"] = data
     table_vars["col_defs"] = col_defs
@@ -369,7 +366,11 @@ def render_layout(
             include_drivers,
             metric_drivers_labels,
             subject_metric_drivers,
-            decomposition_metric_drivers
+            decomposition_metric_drivers,
+            ignore_cols=["parent_dim_member", "is_collapsible"],
+            highlight_col="is_subject",
+            followup_col="msg",
+            sparkline_col="sparkline"
         )
         # table_vars["hide_footer"] = hide_footer
         rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
