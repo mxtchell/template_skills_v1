@@ -10,7 +10,7 @@ class TestMarketShareAnalysis:
     period_filter_2024 = "2023"
     growth_type = "Y/Y"
     barilla_filter = {"dim": "brand", "op": "=", "val": "barilla"}
-    twelve_ounce_filter = {"dim": "base_size", "op": "=", "val": "12 ounce"} 
+    private_label_filter = {"dim": "manufacturer", "op": "=", "val": "private label"} 
 
     preview = True
 
@@ -40,24 +40,13 @@ class TestMarketShareAnalysis:
 
         self._assert_msa_runs_without_errors(parameters)
 
-    def test_sales_share_in_2024_for_12_ounce(self):
+    def test_sales_share_in_2024_for_private_label(self):
         """Test with a single metric, no growth type"""
 
         parameters = {
             "metric": self.metric_sales_share,
             "periods": [self.period_filter_2024],
-            "other_filters": [self.twelve_ounce_filter]
-        }
-
-        self._assert_msa_runs_without_errors(parameters)
-
-    def test_sales_share_in_2024_for_vodka(self):
-        """Test with a single metric, no growth type"""
-
-        parameters = {
-            "metric": self.metric_sales_share,
-            "periods": [self.period_filter_2024],
-            "other_filters": [self.vodka_filter]
+            "other_filters": [self.private_label_filter]
         }
 
         self._assert_msa_runs_without_errors(parameters)
