@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.5
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@a9e61074f1697b6df7925368bbdbadb471a3d125
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -214,7 +214,7 @@ sqlglot==26.2.1
     #   -c platform_constraints.txt
     #   -r requirements.in
     #   ar-analytics
-starlette==0.46.1
+starlette==0.46.2
     # via fastapi
 tomli==2.2.1
     # via pytest
@@ -232,7 +232,7 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   typer
     #   uvicorn
-uvicorn[standard]==0.34.0
+uvicorn[standard]==0.34.1
     # via
     #   fastapi
     #   fastapi-cli
