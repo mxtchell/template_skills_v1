@@ -103,11 +103,6 @@ def simple_metric_driver(parameters: SkillInput):
     }
     tables.update(results['viz_breakout_dfs'])
 
-    # remove sparklines
-    for key, item in tables.items():
-        if "sparkline" in item.columns:
-            item.drop(columns=["sparkline"], inplace=True)
-
     param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.da.paramater_display_infomation.items()]
 
     insights_dfs = [env.da.df_notes, env.da.breakout_facts, env.da.subject_fact.get("df", pd.DataFrame())]
@@ -155,7 +150,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
     for name, table in tables.items():
         export_data[name] = table
         hide_footer = True
-        table_vars = get_table_layout_vars(table)
+        table_vars = get_table_layout_vars(table, sparkline_col="sparkline")
         table_vars["hide_footer"] = hide_footer
         rendered = wire_layout(json.loads(viz_layout), {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
