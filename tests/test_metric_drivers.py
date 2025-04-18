@@ -5,12 +5,9 @@ from skill_framework.preview import preview_skill
 
 
 class TestMetricDrivers:
-
-    # TODO: Can this test be made generic and put into ar-analytics?
-
+    
     met1 = "sales"
     met2 = "volume"
-    # sales_met = "sales_share" # todo: need this for overproof?
     breakout1 = "brand"
     breakout2 = "base_size"
     period_filter1 = "2023"
@@ -18,7 +15,7 @@ class TestMetricDrivers:
     filter1 = {"dim": "brand", "op": "=", "val": "barilla"}
     filter2 = {"dim": "base_size", "op": "=", "val": "12 ounce"}
 
-    preview = True # Set to True to get previews
+    preview = True
 
     def _run_metric_drivers(self, parameters: Dict, preview: bool = False):
 
