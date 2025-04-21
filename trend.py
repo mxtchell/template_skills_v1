@@ -118,8 +118,8 @@ def trend(parameters: SkillInput):
                                                 env.trend.warning_message,
                                                 parameters.arguments.max_prompt,
                                                 parameters.arguments.insight_prompt,
-												parameters.arguments.table_viz_layout,
-												parameters.arguments.chart_viz_layout)
+                                                parameters.arguments.table_viz_layout,
+                                                parameters.arguments.chart_viz_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -131,34 +131,35 @@ def trend(parameters: SkillInput):
     )
 
 def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout):
-	facts = []
-	for i_df in insights_dfs:
-		facts.append(i_df.to_dict(orient='records'))
+    facts = []
+    for i_df in insights_dfs:
+        facts.append(i_df.to_dict(orient='records'))
 
-	insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
-	max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
+    insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
+    max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
 
-	# adding insights
-	ar_utils = ArUtils()
-	insights = ar_utils.get_llm_response(insight_template)
+    # adding insights
+    ar_utils = ArUtils()
+    insights = ar_utils.get_llm_response(insight_template)
 
-	tab_vars = {"headline": title if title else "Total",
-				"sub_headline": subtitle or "Trend Analysis",
-				"hide_growth_warning": False if warnings else True,
-				"exec_summary": insights if insights else "No Insight.",
-				"warning": warnings}
+    tab_vars = {"headline": title if title else "Total",
+                "sub_headline": subtitle or "Trend Analysis",
+                "hide_growth_warning": False if warnings else True,
+                "exec_summary": insights if insights else "No Insight.",
+                "warning": warnings}
 
-	viz = []
-	for name, chart_vars in charts.items():
-		rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
-		viz.append(SkillVisualization(title=name, layout=rendered))
+    viz = []
+    for name, chart_vars in charts.items():
+        chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "No additional info."
+        rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
+        viz.append(SkillVisualization(title=name, layout=rendered))
 
 
-	table_vars = get_table_layout_vars(tables[0])
-	table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
-	viz.append(SkillVisualization(title="Metrics Table", layout=table))
+    table_vars = get_table_layout_vars(tables[0])
+    table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
+    viz.append(SkillVisualization(title="Metrics Table", layout=table))
 
-	return viz, insights, max_response_prompt
+    return viz, insights, max_response_prompt
 
 if __name__ == '__main__':
     skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["mat jun 2021"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})
