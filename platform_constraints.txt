@@ -14,7 +14,7 @@ aiosignal==1.3.1
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-answerrocket-client==0.2.43
+answerrocket-client==0.2.45
     # via
     #   -r setup/requirements.in
     #   ar-analytics
@@ -30,7 +30,7 @@ anytree==2.12.1
     # via ttimer
 appnope==0.1.4
     # via ipython
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.5
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.8
     # via -r setup/requirements.in
 asttokens==2.4.1
     # via stack-data
@@ -71,9 +71,7 @@ botocore==1.27.96
     #   boto3
     #   s3transfer
 cachetools==5.5.0
-    # via
-    #   google-auth
-    #   mlflow-skinny
+    # via google-auth
 certifi==2024.7.4
     # via
     #   -r setup/requirements.in
@@ -90,11 +88,7 @@ cheroot==8.6.0
     #   -r setup/requirements.in
     #   web-py
 click==8.1.7
-    # via
-    #   mlflow-skinny
-    #   nltk
-cloudpickle==3.1.0
-    # via mlflow-skinny
+    # via nltk
 cmdstanpy==1.2.4
     # via prophet
 contourpy==1.3.0
@@ -111,21 +105,12 @@ cryptography==43.0.1
     #   pyjwt
 cycler==0.12.1
     # via matplotlib
-databricks-sdk==0.35.0
-    # via mlflow-skinny
-databricks-sql-connector==2.3.0
-    # via -r setup/requirements.in
-databricks-vectorsearch==0.22
-    # via -r setup/requirements.in
 dataclasses-json==0.6.7
     # via llama-index-core
 decorator==5.1.1
     # via ipython
 deprecated==1.2.14
-    # via
-    #   llama-index-core
-    #   opentelemetry-api
-    #   opentelemetry-semantic-conventions
+    # via llama-index-core
 diff-match-patch==20230430
     # via -r setup/requirements.in
 dirtyjson==1.0.8
@@ -138,6 +123,8 @@ distro==1.9.0
     #   openai
 dnspython==2.7.0
     # via pymongo
+dotenv==0.9.9
+    # via skill-framework
 duckdb==1.1.0
     # via -r setup/requirements.in
 elastic-apm==6.10.1
@@ -169,10 +156,6 @@ fsspec==2024.9.0
     #   fastparquet
     #   huggingface-hub
     #   llama-index-core
-gitdb==4.0.11
-    # via gitpython
-gitpython==3.1.43
-    # via mlflow-skinny
 google-ai-generativelanguage==0.6.10
     # via google-generativeai
 google-api-core==2.21.0
@@ -186,7 +169,6 @@ google-api-python-client==2.149.0
     # via google-generativeai
 google-auth==2.35.0
     # via
-    #   databricks-sdk
     #   google-ai-generativelanguage
     #   google-api-core
     #   google-api-python-client
@@ -249,10 +231,6 @@ idna==3.10
     #   httpx
     #   requests
     #   yarl
-importlib-metadata==8.4.0
-    # via
-    #   mlflow-skinny
-    #   opentelemetry-api
 importlib-resources==6.4.5
     # via prophet
 ipython==8.10.0
@@ -300,8 +278,6 @@ lxml==4.9.3
     # via
     #   -r setup/requirements.in
     #   python-pptx
-lz4==4.3.3
-    # via databricks-sql-connector
 markdown==3.4.4
     # via -r setup/requirements.in
 markupsafe==3.0.1
@@ -315,8 +291,6 @@ matplotlib==3.7.2
     #   prophet
 matplotlib-inline==0.1.7
     # via ipython
-mlflow-skinny==2.17.0
-    # via databricks-vectorsearch
 more-itertools==10.5.0
     # via
     #   cheroot
@@ -347,7 +321,6 @@ numpy==1.23.4
     #   ar-analytics
     #   cmdstanpy
     #   contourpy
-    #   databricks-sql-connector
     #   fastparquet
     #   llama-index-core
     #   matplotlib
@@ -360,21 +333,10 @@ numpy==1.23.4
     #   statsmodels
 oauth2client==4.1.3
     # via -r setup/requirements.in
-oauthlib==3.2.2
-    # via databricks-sql-connector
 openai==1.61.0
     # via -r setup/requirements.in
 openpyxl==3.0.10
     # via -r setup/requirements.in
-opentelemetry-api==1.27.0
-    # via
-    #   mlflow-skinny
-    #   opentelemetry-sdk
-    #   opentelemetry-semantic-conventions
-opentelemetry-sdk==1.27.0
-    # via mlflow-skinny
-opentelemetry-semantic-conventions==0.48b0
-    # via opentelemetry-sdk
 orjson==3.10.7
     # via langsmith
 packaging==23.2
@@ -383,7 +345,6 @@ packaging==23.2
     #   huggingface-hub
     #   marshmallow
     #   matplotlib
-    #   mlflow-skinny
     #   plotly
     #   statsmodels
 pandas==1.5.3
@@ -392,7 +353,6 @@ pandas==1.5.3
     #   answerrocket-client
     #   ar-analytics
     #   cmdstanpy
-    #   databricks-sql-connector
     #   fastparquet
     #   prophet
     #   statsmodels
@@ -406,6 +366,8 @@ pexpect==4.9.0
     # via ipython
 pickleshare==0.7.5
     # via ipython
+pika==1.3.2
+    # via -r setup/requirements.in
 pillow==11.0.0
     # via
     #   llama-index-core
@@ -434,22 +396,18 @@ proto-plus==1.24.0
     #   google-api-core
 protobuf==4.25.5
     # via
-    #   databricks-vectorsearch
     #   google-ai-generativelanguage
     #   google-api-core
     #   google-generativeai
     #   googleapis-common-protos
     #   grpcio-status
-    #   mlflow-skinny
     #   proto-plus
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.3
     # via stack-data
 pyarrow==17.0.0
-    # via
-    #   -r setup/requirements.in
-    #   databricks-sql-connector
+    # via -r setup/requirements.in
 pyasn1==0.6.1
     # via
     #   oauth2client
@@ -500,6 +458,8 @@ python-dateutil==2.9.0.post0
     #   holidays
     #   matplotlib
     #   pandas
+python-dotenv==1.1.0
+    # via dotenv
 python-ldap==3.4.4
     # via -r setup/requirements.in
 python-pptx==0.6.23
@@ -511,7 +471,6 @@ pyyaml==6.0.2
     #   -r setup/requirements.in
     #   huggingface-hub
     #   llama-index-core
-    #   mlflow-skinny
 rapidfuzz==3.10.0
     # via -r setup/requirements.in
 referencing==0.35.1
@@ -529,15 +488,11 @@ requests==2.32.3
     #   -r setup/requirements.in
     #   azure-core
     #   azure-storage-common
-    #   databricks-sdk
-    #   databricks-sql-connector
-    #   databricks-vectorsearch
     #   google-api-core
     #   google-cloud-storage
     #   huggingface-hub
     #   langsmith
     #   llama-index-core
-    #   mlflow-skinny
     #   msal
     #   requests-toolbelt
     #   tiktoken
@@ -576,13 +531,10 @@ six==1.16.0
     #   oauth2client
     #   patsy
     #   python-dateutil
-    #   thrift
-skill-framework==0.3.7
+skill-framework==0.3.10
     # via
     #   -r setup/requirements.in
     #   ar-analytics
-smmap==5.0.1
-    # via gitdb
 sniffio==1.3.1
     # via
     #   anthropic
@@ -599,8 +551,8 @@ sqlglot==26.2.1
     # via
     #   -r setup/requirements.in
     #   ar-analytics
-sqlparse==0.5.1
-    # via mlflow-skinny
+sqlparse==0.5.3
+    # via -r setup/requirements.in
 stack-data==0.6.3
     # via ipython
 stanio==0.5.1
@@ -613,8 +565,6 @@ tenacity==8.5.0
     # via
     #   llama-index-core
     #   plotly
-thrift==0.16.0
-    # via databricks-sql-connector
 tiktoken==0.4.0
     # via
     #   -r setup/requirements.in
@@ -652,7 +602,6 @@ typing-extensions==4.12.2
     #   llama-index-core
     #   multidict
     #   openai
-    #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
     #   pyee
@@ -695,5 +644,3 @@ xlsxwriter==3.0.3
     #   python-pptx
 yarl==1.15.4
     # via aiohttp
-zipp==3.20.2
-    # via importlib-metadata
