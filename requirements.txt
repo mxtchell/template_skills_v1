@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.5
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.8
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
