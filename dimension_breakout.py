@@ -7,7 +7,7 @@ from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
 
 from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars
+from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, default_bridge_chart_viz
 
 import jinja2
 import logging
@@ -84,6 +84,12 @@ logger = logging.getLogger(__name__)
             parameter_type="visualization",
             description="Table Viz Layout",
             default_value=default_table_layout
+        ),
+        SkillParameter(
+            name="bridge_chart_viz_layout",
+            parameter_type="visualization",
+            description="Bridge Chart Viz Layout",
+            default_value=default_bridge_chart_viz
         )
     ]
 )
@@ -107,6 +113,7 @@ def simple_breakout(parameters: SkillInput):
     followups = env.ba.get_suggestions()
 
     viz, insights, final_prompt, export_data = render_layout(tables,
+                                                            env.ba.get_display_bridge_charts(),
                                                             env.ba.title,
                                                             env.ba.subtitle,
                                                             insights_dfs,
@@ -114,7 +121,8 @@ def simple_breakout(parameters: SkillInput):
                                                             env.ba.footnotes,
                                                             parameters.arguments.max_prompt,
                                                             parameters.arguments.insight_prompt,
-                                                            parameters.arguments.table_viz_layout)
+                                                            parameters.arguments.table_viz_layout,
+                                                            parameters.arguments.bridge_chart_viz_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -134,7 +142,7 @@ def find_footnote(footnotes, df):
             break
     return dim_note
 
-def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout):
+def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout, bridge_chart_viz_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -164,6 +172,11 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, footnotes, ma
         table_vars["hide_footer"] = hide_footer
         table_vars["footer"] = f"*{dim_note.strip()}" if dim_note else "No additional info."
         rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
+        viz_list.append(SkillVisualization(title=name, layout=rendered))
+
+    if bridge_chart_data is not None:
+        table_vars["bridge_data"] = [{ "data": bridge_chart_data.to_dict(orient="records") }] if bridge_chart_data is not None else []
+        rendered = wire_layout( json.loads(bridge_chart_viz_layout), {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 
     return viz_list, insights, max_response_prompt, export_data
