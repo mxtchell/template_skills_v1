@@ -182,7 +182,7 @@ rich==14.0.0
     # via
     #   rich-toolkit
     #   typer
-rich-toolkit==0.14.1
+rich-toolkit==0.14.3
     # via fastapi-cli
 sgqlc==16.4
     # via
@@ -214,7 +214,11 @@ sqlglot==26.2.1
     #   -c platform_constraints.txt
     #   -r requirements.in
     #   ar-analytics
-starlette==0.46.1
+sqlparse==0.5.1
+    # via
+    #   -c platform_constraints.txt
+    #   -r requirements.in
+starlette==0.46.2
     # via fastapi
 tomli==2.2.1
     # via pytest
@@ -232,7 +236,7 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   typer
     #   uvicorn
-uvicorn[standard]==0.34.0
+uvicorn[standard]==0.34.2
     # via
     #   fastapi
     #   fastapi-cli
