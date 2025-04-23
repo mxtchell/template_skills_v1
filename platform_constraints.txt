@@ -30,7 +30,7 @@ anytree==2.12.1
     # via ttimer
 appnope==0.1.4
     # via ipython
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.8
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.9
     # via -r setup/requirements.in
 asttokens==2.4.1
     # via stack-data
