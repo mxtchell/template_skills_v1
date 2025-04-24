@@ -206,7 +206,6 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
-skill-framework[ui]==0.3.10
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
