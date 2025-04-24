@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.8
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.9
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -46,6 +46,10 @@ dnspython==2.7.0
     # via
     #   -c platform_constraints.txt
     #   email-validator
+dotenv==0.9.9
+    # via
+    #   -c platform_constraints.txt
+    #   skill-framework
 email-validator==2.2.0
     # via fastapi
 exceptiongroup==1.2.2
@@ -167,7 +171,10 @@ python-dateutil==2.9.0.post0
     #   matplotlib
     #   pandas
 python-dotenv==1.1.0
-    # via uvicorn
+    # via
+    #   -c platform_constraints.txt
+    #   dotenv
+    #   uvicorn
 python-multipart==0.0.20
     # via fastapi
 pytz==2024.2
@@ -199,7 +206,6 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
-skill-framework[ui]==0.3.7
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -232,7 +238,7 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   typer
     #   uvicorn
-uvicorn[standard]==0.34.1
+uvicorn[standard]==0.34.2
     # via
     #   fastapi
     #   fastapi-cli
