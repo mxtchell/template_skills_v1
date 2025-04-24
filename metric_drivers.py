@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
     ]
 )
 def simple_metric_driver(parameters: SkillInput):
-    param_dict = {"periods": [], "metric": None, "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
+    param_dict = {"periods": [], "metric": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
     print(f"Skill received following parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
