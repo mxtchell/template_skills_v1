@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
     ]
 )
 def simple_metric_driver(parameters: SkillInput):
-    param_dict = {"periods": [], "metric": None, "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
+    param_dict = {"periods": [], "metric": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
     print(f"Skill received following parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
@@ -150,7 +150,7 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
     for name, table in tables.items():
         export_data[name] = table
         hide_footer = True
-        table_vars = get_table_layout_vars(table)
+        table_vars = get_table_layout_vars(table, sparkline_col="sparkline")
         table_vars["hide_footer"] = hide_footer
         rendered = wire_layout(json.loads(viz_layout), {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
