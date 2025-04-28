@@ -8,7 +8,7 @@ annotated-types==0.7.0
     # via
     #   -c platform_constraints.txt
     #   pydantic
-answerrocket-client==0.2.45
+answerrocket-client==0.2.46
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -221,7 +221,7 @@ sqlglot==26.2.1
     #   -c platform_constraints.txt
     #   -r requirements.in
     #   ar-analytics
-sqlparse==0.5.1
+sqlparse==0.5.3
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
