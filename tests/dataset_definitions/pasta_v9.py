@@ -8,6 +8,7 @@ class PastaV9TestColumnNames(Enum):
     # Metrics
     SALES = "sales"
     ACV = "acv"
+    VOLUME = "volume"
     SALES_SHARE = "sales_share"
     ACV_SHARE = "acv_share"
 

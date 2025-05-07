@@ -57,7 +57,7 @@ logger = logging.getLogger(__name__)
         SkillParameter(
             name="growth_type",
             constrained_to=None,
-            constrained_values=["Y/Y", "P/P", "None"],
+            constrained_values=["Y/Y", "P/P", "None", "vs. Budget", "vs. Forecast", "vs. Target"],
             description="Growth type either Y/Y, P/P, or None"
         ),
         SkillParameter(
