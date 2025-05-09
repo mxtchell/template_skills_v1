@@ -589,6 +589,43 @@ DATA_EXPLORE_LAYOUT = r"""{
 					"fieldName": "text"
 				}
 			]
+		},
+        {
+			"name": "base_df_id",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "Highcharts Chart",
+					"fieldName": "_meta_sourceDataframeId"
+				},
+				{
+					"elementName": "tableBlock",
+					"fieldName": "_meta_sourceDataframeId"
+				}
+			]
+		},
+        {
+			"name": "highcharts_element_description",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "Highcharts Chart",
+					"fieldName": "_meta_elementDescription"
+				}
+			]
+		},
+        {
+			"name": "data_table_element_description",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "tableBlock",
+					"fieldName": "_meta_elementDescription"
+				}
+			]
 		}
 	]
 }"""

@@ -8,7 +8,7 @@ annotated-types==0.7.0
     # via
     #   -c platform_constraints.txt
     #   pydantic
-answerrocket-client==0.2.46
+answerrocket-client==0.2.49
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -189,7 +189,7 @@ rich==14.0.0
     # via
     #   rich-toolkit
     #   typer
-rich-toolkit==0.14.3
+rich-toolkit==0.14.4
     # via fastapi-cli
 sgqlc==16.4
     # via
@@ -206,6 +206,7 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
+skill-framework[ui]==0.3.10
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -228,7 +229,7 @@ starlette==0.46.2
     # via fastapi
 tomli==2.2.1
     # via pytest
-typer==0.15.2
+typer==0.15.3
     # via fastapi-cli
 typing-extensions==4.12.2
     # via
