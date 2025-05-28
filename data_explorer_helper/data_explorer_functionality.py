@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import json
 import os
-from answer_rocket import AnswerRocketClient
+from answer_rocket import AnswerRocketClient, MetaDataFrame
 import pandas as pd
 from skill_framework import ExitFromSkillException, ExportData, SkillVisualization, SkillInput, SkillOutput
 import numpy as np
 import jinja2
 from skill_framework.layouts import wire_layout
-from answer_rocket import MetaDataFrame
+from ar_analytics.helpers.utils import get_dataset_id
 
 import sqlparse
 
@@ -56,7 +56,6 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
 
     """
     try:
-        run_local = True
         print("Starting DataExplorer")
         print("Parameters: " + str(parameters.arguments))
         success_but_empty = False
@@ -90,10 +89,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
 
         print("Generating SQL...")
         arc.skill.update_loading_message("Generating SQL...")
-        if run_local:
-            dataset_id = os.getenv("DATASET_ID")
-        else:
-            dataset_id = arc.config.get_copilot_skill().dataset_id
+        dataset_id = get_dataset_id()
 
         sql_res = arc.data.run_sql_ai(
             dataset_id=dataset_id, 

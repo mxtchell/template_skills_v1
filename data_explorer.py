@@ -1,6 +1,6 @@
 from skill_framework import preview_skill, skill, SkillParameter, SkillInput, SkillOutput
-from data_explorer.data_explorer_config import FINAL_PROMPT_TEMPLATE, DATA_EXPLORE_LAYOUT, SQL_ERROR_FINAL_PROMPT_TEMPLATE, SQL_SUCCESS_EMPTY_DATA_FINAL_PROMPT
-from data_explorer.data_explorer_functionality import run_data_explorer
+from data_explorer_helper.data_explorer_config import FINAL_PROMPT_TEMPLATE, DATA_EXPLORE_LAYOUT, SQL_ERROR_FINAL_PROMPT_TEMPLATE, SQL_SUCCESS_EMPTY_DATA_FINAL_PROMPT
+from data_explorer_helper.data_explorer_functionality import run_data_explorer
 
 
 @skill(
@@ -40,8 +40,7 @@ from data_explorer.data_explorer_functionality import run_data_explorer
         )
     ]
 )
-
-def DataExplorer(parameters: SkillInput) -> SkillOutput:
+def data_explorer(parameters: SkillInput):
     """
     Data Explorer skill
 
@@ -52,7 +51,7 @@ def DataExplorer(parameters: SkillInput) -> SkillOutput:
     
     
 if __name__ == '__main__':
-    mock_input = DataExplorer.create_input(arguments={'user_chat_question_with_context': "show me sales over time for the top 5 segments in 2022", "question_is_follow_up": False})
-    output = DataExplorer(mock_input)
-    preview_skill(DataExplorer, output)
+    mock_input = data_explorer.create_input(arguments={'user_chat_question_with_context': "show me sales over time for the top 5 segments in 2022", "question_is_follow_up": False})
+    output = data_explorer(mock_input)
+    preview_skill(data_explorer, output)
     print(output)
