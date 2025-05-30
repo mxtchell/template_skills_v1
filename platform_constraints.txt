@@ -14,11 +14,11 @@ aiosignal==1.3.1
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-answerrocket-client==0.2.49
+answerrocket-client==0.2.55
     # via
     #   -r setup/requirements.in
     #   ar-analytics
-anthropic==0.36.2
+anthropic==0.50.0
     # via -r setup/requirements.in
 anyio==4.4.0
     # via
@@ -30,7 +30,7 @@ anytree==2.12.1
     # via ttimer
 appnope==0.1.4
     # via ipython
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.0.9
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.2
     # via -r setup/requirements.in
 asttokens==2.4.1
     # via stack-data
@@ -62,6 +62,8 @@ azure-storage-common==2.1.0
     # via -r setup/requirements.in
 backcall==0.2.0
     # via ipython
+banks==2.1.2
+    # via llama-index-core
 beautifulsoup4==4.12.3
     # via -r setup/requirements.in
 boto3==1.24.59
@@ -91,6 +93,8 @@ click==8.1.7
     # via nltk
 cmdstanpy==1.2.4
     # via prophet
+colorama==0.4.6
+    # via griffe
 contourpy==1.3.0
     # via matplotlib
 cramjam==2.9.0
@@ -110,7 +114,9 @@ dataclasses-json==0.6.7
 decorator==5.1.1
     # via ipython
 deprecated==1.2.14
-    # via llama-index-core
+    # via
+    #   banks
+    #   llama-index-core
 diff-match-patch==20230430
     # via -r setup/requirements.in
 dirtyjson==1.0.8
@@ -142,9 +148,9 @@ fastjsonschema==2.20.0
 fastparquet==0.8.3
     # via -r setup/requirements.in
 filelock==3.16.1
-    # via
-    #   huggingface-hub
-    #   virtualenv
+    # via virtualenv
+filetype==1.2.0
+    # via llama-index-core
 fonttools==4.54.1
     # via matplotlib
 frozenlist==1.4.1
@@ -154,7 +160,6 @@ frozenlist==1.4.1
 fsspec==2024.9.0
     # via
     #   fastparquet
-    #   huggingface-hub
     #   llama-index-core
 google-ai-generativelanguage==0.6.10
     # via google-generativeai
@@ -200,6 +205,8 @@ greenlet==3.1.1
     # via
     #   playwright
     #   sqlalchemy
+griffe==1.7.3
+    # via banks
 grpcio==1.67.0
     # via
     #   google-api-core
@@ -217,14 +224,12 @@ httplib2==0.22.0
     #   google-api-python-client
     #   google-auth-httplib2
     #   oauth2client
-httpx==0.27.2
+httpx==0.28.1
     # via
     #   anthropic
     #   langsmith
     #   llama-index-core
     #   openai
-huggingface-hub==0.25.2
-    # via tokenizers
 idna==3.10
     # via
     #   anyio
@@ -245,10 +250,11 @@ jaraco-functools==4.0.2
     #   cheroot
 jedi==0.19.1
     # via ipython
-jinja2==3.1.5
+jinja2==3.1.6
     # via
     #   -r setup/requirements.in
     #   ar-analytics
+    #   banks
     #   skill-framework
 jiter==0.6.1
     # via
@@ -268,10 +274,12 @@ jupyter-core==5.7.2
     # via nbformat
 kiwisolver==1.4.7
     # via matplotlib
-langsmith==0.1.136
+langsmith==0.3.42
     # via -r setup/requirements.in
-llama-index-core==0.11.18
-    # via llama-parse
+llama-index-core==0.12.34
+    # via
+    #   -r setup/requirements.in
+    #   llama-parse
 llama-parse==0.4.1
     # via -r setup/requirements.in
 lxml==4.9.3
@@ -333,7 +341,7 @@ numpy==1.23.4
     #   statsmodels
 oauth2client==4.1.3
     # via -r setup/requirements.in
-openai==1.61.0
+openai==1.77.0
     # via -r setup/requirements.in
 openpyxl==3.0.10
     # via -r setup/requirements.in
@@ -342,7 +350,7 @@ orjson==3.10.7
 packaging==23.2
     # via
     #   fastparquet
-    #   huggingface-hub
+    #   langsmith
     #   marshmallow
     #   matplotlib
     #   plotly
@@ -374,8 +382,9 @@ pillow==11.0.0
     #   matplotlib
     #   python-pptx
     #   reportlab
-platformdirs==4.3.6
+platformdirs==4.3.7
     # via
+    #   banks
     #   jupyter-core
     #   virtualenv
 playwright==1.48.0
@@ -425,6 +434,7 @@ pydantic==2.8.2
     # via
     #   -r setup/requirements.in
     #   anthropic
+    #   banks
     #   google-generativeai
     #   langsmith
     #   llama-index-core
@@ -469,7 +479,6 @@ pytz==2024.2
 pyyaml==6.0.2
     # via
     #   -r setup/requirements.in
-    #   huggingface-hub
     #   llama-index-core
 rapidfuzz==3.10.0
     # via -r setup/requirements.in
@@ -490,7 +499,6 @@ requests==2.32.3
     #   azure-storage-common
     #   google-api-core
     #   google-cloud-storage
-    #   huggingface-hub
     #   langsmith
     #   llama-index-core
     #   msal
@@ -531,7 +539,7 @@ six==1.16.0
     #   oauth2client
     #   patsy
     #   python-dateutil
-skill-framework==0.3.10
+skill-framework==0.3.11
     # via
     #   -r setup/requirements.in
     #   ar-analytics
@@ -539,14 +547,11 @@ sniffio==1.3.1
     # via
     #   anthropic
     #   anyio
-    #   httpx
     #   openai
 soupsieve==2.6
     # via beautifulsoup4
 sqlalchemy==2.0.36
-    # via
-    #   llama-index-core
-    #   sqlalchemy
+    # via llama-index-core
 sqlglot==26.2.1
     # via
     #   -r setup/requirements.in
@@ -565,17 +570,14 @@ tenacity==8.5.0
     # via
     #   llama-index-core
     #   plotly
-tiktoken==0.4.0
+tiktoken==0.9.0
     # via
     #   -r setup/requirements.in
     #   llama-index-core
-tokenizers==0.20.1
-    # via anthropic
 tqdm==4.66.5
     # via
     #   cmdstanpy
     #   google-generativeai
-    #   huggingface-hub
     #   llama-index-core
     #   nltk
     #   openai
@@ -598,7 +600,6 @@ typing-extensions==4.12.2
     #   azure-keyvault-secrets
     #   azure-storage-blob
     #   google-generativeai
-    #   huggingface-hub
     #   llama-index-core
     #   multidict
     #   openai
@@ -644,3 +645,5 @@ xlsxwriter==3.0.3
     #   python-pptx
 yarl==1.15.4
     # via aiohttp
+zstandard==0.23.0
+    # via langsmith

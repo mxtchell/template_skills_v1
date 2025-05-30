@@ -89,10 +89,24 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
 
         print("Generating SQL...")
         arc.skill.update_loading_message("Generating SQL...")
-        dataset_id = get_dataset_id()
+
+        dataset_id = None
+
+        try:
+            dataset_id = get_dataset_id()
+        except:
+            pass
+
+        copilot = arc.config.get_copilot()
+
+        if dataset_id is None:
+            dataset_id = copilot.dataset_id
+
+        database_id = copilot.database_id
 
         sql_res = arc.data.run_sql_ai(
-            dataset_id=dataset_id, 
+            dataset_id=dataset_id,
+            database_id=database_id,
             question=user_query
         )
         if sql_res is None:
