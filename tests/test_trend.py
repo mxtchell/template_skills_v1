@@ -299,6 +299,11 @@ PastaV9TrendVarianceConfig = TestTrendVarianceConfig(
 
 class TestTrendVariance(TestTrend):
 
+    '''
+    Requires changing the growth type parameter constraints to constrained_values=["Y/Y", "P/P", "None", "vs. Budget", "vs. Forecast", "vs. Target"]
+    and setting up a pasta v9 dataset with the following variance metrics: Sales, Volume
+    '''
+
     config: TestTrendVarianceConfig = PastaV9TrendVarianceConfig
     preview = True
 
