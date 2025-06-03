@@ -1,17 +1,18 @@
 from __future__ import annotations
+
+import json
+import logging
 from types import SimpleNamespace
 
-from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, ParameterDisplayDescription
+import jinja2
+from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, \
+    default_bridge_chart_viz
+from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, \
+    ParameterDisplayDescription
+from skill_framework.layouts import wire_layout
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
-from skill_framework.layouts import wire_layout
-
-from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, default_bridge_chart_viz
-
-import jinja2
-import logging
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ def simple_breakout(parameters: SkillInput):
         visualizations=viz,
         parameter_display_descriptions=param_info,
         followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")],
-        export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
+        export_data=[ExportData(name=name, id=df.max_metadata.get_id(), data=df) for name, df in export_data.items()]
     )
 
 def find_footnote(footnotes, df):
