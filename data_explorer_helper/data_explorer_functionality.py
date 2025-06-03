@@ -195,6 +195,10 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                     print("SQLGenAi Service returned an error (or df is empty), but sql was generated")
                     data_explore_state.error = sql_res.error
 
+                    data_explore_state.sql = sql_res.sql
+                    data_explore_state.explanation = sql_res.explanation
+                    data_explore_state.title = sql_res.title
+
                     data_explore_layout_variables.update({
                     "error_hidden": True if success_but_empty else False,
                     "error_message": data_explore_state.error,
