@@ -81,7 +81,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             "sql_explanation": None
         }
 
-        
+
 
         arc = AnswerRocketClient()
         print("SDK Connected OK" if arc.can_connect() else "SDK Connection Failed")
@@ -145,7 +145,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                         del data_explore_state.column_metadata_map[col]
             unformatted_df = data_explore_state.base_df.copy()
             unformatted_df = unformatted_df.applymap(lambda x: round(x, 2) if isinstance(x, (int, float)) and x > 1 else x)
-            
+
 
             formatted_df = data_explore_state.base_df.copy()
             # apply formatting rules from sql_res.column_metadata_map[col].format_string (an example value for this is "%.2f")
@@ -159,7 +159,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                             )
                         except Exception as e:
                             print(f"Error formatting column '{col}' with format string '{format_string}': {e}")
-            
+
             if formatted_df.shape[0] > 100:
                 formatted_df = formatted_df.head(100)
                 df_truncated = True
@@ -172,7 +172,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
 
             data_table_columns = [{"name": col} for col in formatted_df.columns]
             data_table_data = formatted_df.to_numpy().tolist()
-            
+
 
             base_df_id = data_explore_state.base_df.max_metadata.get_id()
             base_df_description = f"A dataframe retrieved based on the user question: {data_explore_state.question}. Consists of the following columns: "
@@ -182,7 +182,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                 col_type = col_info.get("type", "")
                 col_desc = col_info.get("description", "")
                 column_descriptions.append(f"{col} ({col_type}): {col_desc}")
-            
+
             base_df_description += ", ".join(column_descriptions)
             data_explore_state.base_df.max_metadata.set_description(base_df_description)
             data_table_desc = "A datatable displaying dataframe data. The data has been formatted to be more readable. " + ("The data has been truncated to 100 rows for display purposes." if df_truncated else "") + "The dataframe has the following associated description: \n" + base_df_description
@@ -191,15 +191,15 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                 "data_table_element_description": data_table_desc,
             })
         else:
-                if sql_res.sql is not None:
-                    print("SQLGenAi Service returned an error (or df is empty), but sql was generated")
-                    data_explore_state.error = sql_res.error
+            if sql_res.sql is not None:
+                print("SQLGenAi Service returned an error (or df is empty), but sql was generated")
+                data_explore_state.error = sql_res.error
 
-                    data_explore_state.sql = sql_res.sql
-                    data_explore_state.explanation = sql_res.explanation
-                    data_explore_state.title = sql_res.title
+                data_explore_state.sql = sql_res.sql
+                data_explore_state.explanation = sql_res.explanation
+                data_explore_state.title = sql_res.title
 
-                    data_explore_layout_variables.update({
+                data_explore_layout_variables.update({
                     "error_hidden": True if success_but_empty else False,
                     "error_message": data_explore_state.error,
                     "sql_hidden": False,
@@ -207,35 +207,35 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                     "sql_explanation": data_explore_state.explanation,
                     "truncate_message_hidden": False if success_but_empty else True,
                     "truncate_message_text": "The query ran successfully, but no data was returned" if success_but_empty else "The SQL query reached the 10,000 row default limit. The data has also been truncated to 100 rows for display purposes." if data_explore_state.sql_row_limit_exceeded else None
-                    })
-                    rendered_data_explore_layout = wire_layout(data_explore_layout, data_explore_layout_variables)
-                    # sql was generated but there was an error, surface error in output block and display sql
-                    #format output block
-                    if success_but_empty:
-                        final_prompt = parameters.arguments.sql_success_empty_data_final_prompt
-                    else:
-                        final_prompt = jinja2.Template(parameters.arguments.sql_error_final_prompt_template).render(error_message=data_explore_state.error)
-
-                    skill_output = SkillOutput(
-                        final_prompt=final_prompt,
-                        narrative="",
-                        visualizations=[SkillVisualization(
-                            title=data_explore_state.title,
-                            layout = rendered_data_explore_layout
-                        )]
-                    )
-                    return skill_output
+                })
+                rendered_data_explore_layout = wire_layout(data_explore_layout, data_explore_layout_variables)
+                # sql was generated but there was an error, surface error in output block and display sql
+                #format output block
+                if success_but_empty:
+                    final_prompt = parameters.arguments.sql_success_empty_data_final_prompt
                 else:
-                    print("SQLGenAi Service returned an error, and no sql was generated")
-                    data_explore_state.error = sql_res.error
-                    raise ExitFromSkillException(message=data_explore_state.error, prompt_message="Let the user know that an error occurred, suggest that the user should try another question")
-        
+                    final_prompt = jinja2.Template(parameters.arguments.sql_error_final_prompt_template).render(error_message=data_explore_state.error)
+
+                skill_output = SkillOutput(
+                    final_prompt=final_prompt,
+                    narrative="",
+                    visualizations=[SkillVisualization(
+                        title=data_explore_state.title,
+                        layout = rendered_data_explore_layout
+                    )]
+                )
+                return skill_output
+            else:
+                print("SQLGenAi Service returned an error, and no sql was generated")
+                data_explore_state.error = sql_res.error
+                raise ExitFromSkillException(message=data_explore_state.error, prompt_message="Let the user know that an error occurred, suggest that the user should try another question")
+
         arc.skill.update_loading_message("Generating visualization...")
         print("Generating visualization...")
         # Format the data in the structure expected by the visualization service
         columns = [{"name": col} for col in unformatted_df.columns]
         rows = [{"data": row} for row in unformatted_df.values.tolist()]
-            
+
         vis_data_input = {
             "columns": columns,
             "rows": rows
@@ -268,8 +268,8 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                     layout = rendered_data_explore_layout
                 )],
                 export_data=[ExportData(
-                name="data_explorer_data",
-                data=data_explore_state.base_df
+                    name="data_explorer_data",
+                    data=data_explore_state.base_df
                 )]
             )
             return skill_output
@@ -301,12 +301,12 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                     layout = rendered_data_explore_layout
                 )],
                 export_data=[ExportData(
-                name="data_explorer_data",
-                data=data_explore_state.base_df
-            )]
+                    name="data_explorer_data",
+                    data=data_explore_state.base_df
+                )]
             )
             return skill_output
-        
+
 
 
         data_explore_layout_variables.update({
@@ -324,9 +324,9 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
         print(rendered_data_explore_layout)
         print("(*)"*50)
 
-        
-        
-        
+
+
+
         vis_type = data_explore_state.visualization.get("options", {}).get("chart", {}).get("type", None)
 
         skill_output = SkillOutput(
@@ -342,7 +342,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             )]
         )
         return skill_output
-        
+
     except Exception as e:
         if isinstance(e, ExitFromSkillException):
             raise e
