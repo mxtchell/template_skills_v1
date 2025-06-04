@@ -186,8 +186,7 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
         try:
             abs_slide = wire_layout(json.loads(abs_chart_ppt_layout), {**tab_vars, **chart_vars})
             slides.append(abs_slide)
-            print(chart_vars)
-            if "hide_growth_warning" in chart_vars and not chart_vars["hide_growth_warning"]:
+            if "hide_growth_chart" in chart_vars and not chart_vars["hide_growth_chart"]:
                 growth_slide = wire_layout(json.loads(growth_chart_ppt_layout), {**tab_vars, **chart_vars})
                 slides.append(growth_slide)
                 diff_slide = wire_layout(json.loads(diff_chart_ppt_layout), {**tab_vars, **chart_vars})
