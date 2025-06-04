@@ -89,9 +89,21 @@ logger = logging.getLogger(__name__)
             default_value=default_trend_chart_layout
         ),
         SkillParameter(
-            name="chart_ppt_export_viz_layout",
+            name="abs_chart_ppt_layout",
             parameter_type="visualization",
-            description="chart slide Viz Layout",
+            description="abs chart slide Viz Layout",
+            default_value=default_trend_chart_layout
+        ),
+        SkillParameter(
+            name="growth_chart_ppt_layout",
+            parameter_type="visualization",
+            description="growth chart slide Viz Layout",
+            default_value=default_trend_chart_layout
+        ),
+        SkillParameter(
+            name="diff_chart_ppt_layout",
+            parameter_type="visualization",
+            description="diff chart slide Viz Layout",
             default_value=default_trend_chart_layout
         ),
         SkillParameter(
@@ -132,7 +144,9 @@ def trend(parameters: SkillInput):
                                                 parameters.arguments.insight_prompt,
                                                 parameters.arguments.table_viz_layout,
                                                 parameters.arguments.chart_viz_layout,
-                                                parameters.arguments.chart_ppt_export_viz_layout,
+                                                parameters.arguments.abs_chart_ppt_layout,
+                                                parameters.arguments.growth_chart_ppt_layout,
+                                                parameters.arguments.diff_chart_ppt_layout,
                                                 parameters.arguments.table_ppt_export_viz_layout)
 
     return SkillOutput(
@@ -145,7 +159,7 @@ def trend(parameters: SkillInput):
         export_data=[ExportData(name="Metrics Table", data=tables[0])]
     )
 
-def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, chart_ppt_export_viz_layout, table_ppt_export_viz_layout):
+def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, abs_chart_ppt_layout, growth_chart_ppt_layout, diff_chart_ppt_layout, table_ppt_export_viz_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -169,14 +183,16 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
         chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "No additional info."
         rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
         viz.append(SkillVisualization(title=name, layout=rendered))
-        if chart_ppt_export_viz_layout is not None:
-            try:
-                slide = wire_layout(json.loads(chart_ppt_export_viz_layout), {**tab_vars, **chart_vars})
-                slides.append(slide)
-            except Exception as e:
-                logger.error(f"Error rendering chart ppt slide: {e}")
-        else:
-            slides.append(rendered)
+        try:
+            abs_slide = wire_layout(json.loads(abs_chart_ppt_layout), {**tab_vars, **chart_vars})
+            slides.append(abs_slide)
+            if "hide_growth_warning" in chart_vars and not chart_vars["hide_growth_warning"]:
+                growth_slide = wire_layout(json.loads(growth_chart_ppt_layout), {**tab_vars, **chart_vars})
+                slides.append(growth_slide)
+                diff_slide = wire_layout(json.loads(diff_chart_ppt_layout), {**tab_vars, **chart_vars})
+                slides.append(diff_slide)
+        except Exception as e:
+            logger.error(f"Error rendering chart ppt slide: {e}")
 
     table_vars = get_table_layout_vars(tables[0])
     table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
