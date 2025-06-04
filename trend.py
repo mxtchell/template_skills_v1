@@ -189,8 +189,8 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
             if "hide_growth_chart" in chart_vars and not chart_vars["hide_growth_chart"]:
                 growth_slide = wire_layout(json.loads(growth_chart_ppt_layout), {**tab_vars, **chart_vars})
                 slides.append(growth_slide)
-                diff_slide = wire_layout(json.loads(diff_chart_ppt_layout), {**tab_vars, **chart_vars})
-                slides.append(diff_slide)
+                # diff_slide = wire_layout(json.loads(diff_chart_ppt_layout), {**tab_vars, **chart_vars})
+                # slides.append(diff_slide)
         except Exception as e:
             logger.error(f"Error rendering chart ppt slide: {e}")
 
