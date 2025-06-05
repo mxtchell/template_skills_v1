@@ -102,18 +102,6 @@ logger = logging.getLogger(__name__)
             parameter_type="visualization",
             description="Bridge Chart PPT Layout",
             default_value=default_bridge_chart_viz
-        ),
-        SkillParameter(
-            name="title_slide",
-            parameter_type="visualization",
-            description="PPT title slide",
-            default_value=default_bridge_chart_viz
-        ),
-        SkillParameter(
-            name="text_slide",
-            parameter_type="visualization",
-            description="PPT text slide",
-            default_value=default_bridge_chart_viz
         )
     ]
 )
@@ -148,9 +136,7 @@ def simple_breakout(parameters: SkillInput):
                                                             parameters.arguments.table_viz_layout,
                                                             parameters.arguments.bridge_chart_viz_layout,
                                                             parameters.arguments.table_ppt_layout,
-                                                            parameters.arguments.bridge_chart_ppt_layout,
-                                                            parameters.arguments.title_slide,
-                                                            parameters.arguments.text_slide)
+                                                            parameters.arguments.bridge_chart_ppt_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -171,7 +157,7 @@ def find_footnote(footnotes, df):
             break
     return dim_note
 
-def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout, bridge_chart_viz_layout, table_ppt_layout, bridge_chart_ppt_layout, title_slide, text_slide):
+def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout, bridge_chart_viz_layout, table_ppt_layout, bridge_chart_ppt_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -183,7 +169,7 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
     ar_utils = ArUtils()
     insights = ar_utils.get_llm_response(insight_template)
     viz_list = []
-    slides = ([wire_layout(json.loads(title_slide), {})] if title_slide is not None else []) + ([wire_layout(json.loads(text_slide), {})] if text_slide is not None else [])
+    slides = []
     export_data = {}
 
     general_vars = {"headline": title if title else "Total",
