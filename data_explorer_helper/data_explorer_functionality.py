@@ -151,12 +151,17 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             if df.empty:
                 success_but_empty = True
 
+        if sql_res.sql:
+            _logger.info("sql_res.sql: \n" + str(sql_res.sql))
+
+        if sql_res.raw_sql:
+            _logger.info("sql_res.raw_sql: \n" + str(sql_res.raw_sql))
+
         if sql_res.timing_info:
             pretty_str = json.dumps(sql_res.timing_info, indent=4)
             _logger.info(f"Timing info:\n{pretty_str}")
 
         if sql_res.success and not success_but_empty:
-            _logger.info("sql_res.sql: " + str(sql_res.sql))
             _logger.info("sql_res.explanation: " + str(sql_res.explanation))
             _logger.info("sql_res.title: " + str(sql_res.title))
             _logger.info("sql_res.column_metadata_map: " + str(sql_res.column_metadata_map))
