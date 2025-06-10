@@ -70,7 +70,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
         Output object containing the SQL query, the data results, and any generated visualization.
     """
     try:
-        _logger.info("Starting DataExplorer")
+        _logger.info("Starting Data Explorer")
         _logger.info("Parameters: " + str(parameters.arguments))
 
         success_but_empty = False
@@ -151,20 +151,18 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             if df.empty:
                 success_but_empty = True
 
-        if sql_res.sql:
-            _logger.info("sql_res.sql: \n" + str(sql_res.sql))
-
-        if sql_res.raw_sql:
-            _logger.info("sql_res.raw_sql: \n" + str(sql_res.raw_sql))
-
         if sql_res.timing_info:
             pretty_str = json.dumps(sql_res.timing_info, indent=4)
             _logger.info(f"Timing info:\n{pretty_str}")
 
         if sql_res.success and not success_but_empty:
-            _logger.info("sql_res.explanation: " + str(sql_res.explanation))
-            _logger.info("sql_res.title: " + str(sql_res.title))
-            _logger.info("sql_res.column_metadata_map: " + str(sql_res.column_metadata_map))
+            if len(sql_res.prior_runs) > 0:
+                _dump_sql_ai_result(sql_res)
+            else:
+                _logger.info("sql_res.sql: " + str(sql_res.sql))
+                _logger.info("sql_res.explanation: " + str(sql_res.explanation))
+                _logger.info("sql_res.title: " + str(sql_res.title))
+                _logger.info("sql_res.column_metadata_map: " + str(sql_res.column_metadata_map))
 
             data_explore_state.sql = sql_res.sql
             data_explore_state.explanation = sql_res.explanation
@@ -252,6 +250,8 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             if sql_res.sql is not None:
                 _logger.info("SQLGenAi Service returned an error (or df is empty), but sql was generated")
 
+                _dump_sql_ai_result(sql_res)
+
                 data_explore_state.error = sql_res.error
 
                 data_explore_state.sql = sql_res.sql
@@ -285,9 +285,12 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                         layout = rendered_data_explore_layout
                     )]
                 )
+
                 return skill_output
             else:
                 _logger.info("SQLGenAi Service returned an error, and no sql was generated")
+
+                _dump_sql_ai_result(sql_res)
 
                 data_explore_state.error = sql_res.error
 
@@ -431,3 +434,60 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
         _logger.info("Unexpected error encountered in DataExplorer: " + str(e))
 
         raise ExitFromSkillException(message=str(e), prompt_message="Let the user know that an unexpected error occurred, suggest that the user should try another question")
+
+
+def _dump_sql_ai_result(run_sql_ai_result):
+    def pretty_json(label: str, data) -> str:
+        """
+        Pretty-print JSON data to logs. Handles strings, dicts, lists, or any input.
+
+        Args:
+            label (str): Label for context in logs (e.g., "column_metadata_map")
+            data (Any): JSON string, dict, list, or any object to log
+        """
+        try:
+            if isinstance(data, str):
+                # Try to parse string as JSON
+                parsed = json.loads(data)
+            else:
+                parsed = data  # Assume already dict/list/etc.
+
+            pretty_str = json.dumps(parsed, indent=4)
+        except:
+            # Fallback to plain string if parsing or dumping fails
+            pretty_str = str(data)
+
+        return f"{label}\n{pretty_str.strip()}\n"
+
+    def log_it(label: str, data):
+        _logger.info(pretty_json(label, data))
+
+    log_it("sql", run_sql_ai_result.sql)
+    log_it("raw_sql", run_sql_ai_result.raw_sql)
+
+    if run_sql_ai_result.rendered_prompt:
+        try:
+            messages = json.loads(run_sql_ai_result.rendered_prompt)
+
+            log_messages = []
+
+            for message in messages:
+                log_message = f"""
+role: {message["role"]}
+content: {pretty_json("", message["content"])}
+                """
+
+                log_messages.append(log_message)
+
+            _logger.info("rendered_prompt:\n" + "\n".join(log_messages))
+        except:
+            log_it("rendered_prompt", run_sql_ai_result.rendered_prompt)
+
+    log_it("column_metadata_map", run_sql_ai_result.column_metadata_map)
+    log_it("title", run_sql_ai_result.title)
+    log_it("explanation", run_sql_ai_result.explanation)
+    log_it("timing_info", run_sql_ai_result.timing_info)
+
+    for prior_run in run_sql_ai_result.prior_runs:
+        _logger.info("====================== Prior Run: ======================")
+        _dump_sql_ai_result(prior_run)
