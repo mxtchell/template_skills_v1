@@ -156,13 +156,7 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
             _logger.info(f"Timing info:\n{pretty_str}")
 
         if sql_res.success and not success_but_empty:
-            if len(sql_res.prior_runs) > 0:
-                _dump_sql_ai_result(sql_res)
-            else:
-                _logger.info("sql_res.sql: " + str(sql_res.sql))
-                _logger.info("sql_res.explanation: " + str(sql_res.explanation))
-                _logger.info("sql_res.title: " + str(sql_res.title))
-                _logger.info("sql_res.column_metadata_map: " + str(sql_res.column_metadata_map))
+            _dump_sql_ai_result(sql_res)
 
             data_explore_state.sql = sql_res.sql
             data_explore_state.explanation = sql_res.explanation
