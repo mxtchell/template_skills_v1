@@ -14,6 +14,8 @@ class TestLegacyBreakout:
 
         skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
         out = simple_breakout(skill_input)
+        
+        # print(f"Current simple breakout output: {out}")
         preview_skill(simple_breakout, out)
 
         assert True

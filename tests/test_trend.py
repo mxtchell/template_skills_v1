@@ -593,3 +593,29 @@ class TestTrendVariance(TestTrend):
         }
 
         self._assert_trend_runs_without_errors(parameters)
+
+    def test_demo_data(self):
+        """Test with multiple metrics, period, forecast, breakout, and filter"""
+
+        parameters = {
+            "metrics": [
+                "sales"
+            ],
+            "breakouts": [
+            
+            ],
+            "other_filters": [
+                {
+                "val": [
+                    "barilla"
+                ],
+                "dim": "brand",
+                "op": "="
+                }
+            ],
+            "limit_n": "10"
+        }
+
+        self._assert_trend_runs_without_errors(parameters)
+
+    
