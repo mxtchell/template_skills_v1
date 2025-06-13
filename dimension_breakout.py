@@ -13,6 +13,209 @@ import jinja2
 import logging
 import json
 
+default_ppt_table_layout = """
+{
+	"layoutJson": {
+		"type": "Canvas",
+		"rows": 90,
+		"columns": 160,
+		"rowHeight": "1.11%",
+		"colWidth": "0.625%",
+		"gap": "0px",
+		"style": {
+			"backgroundColor": "#ffffff",
+			"width": "100%",
+			"height": "100%"
+		},
+		"children": [
+			{
+				"name": "Header0",
+				"type": "Header",
+				"row": 10,
+				"column": 12,
+				"width": 105,
+				"height": 7,
+				"text": "Pasta Sales Have Trended Downward",
+				"style": {
+					"fontSize": "40px",
+					"fontWeight": "bold",
+					"textAlign": "left",
+					"verticalAlign": "start",
+					"color": "#2563eb",
+					"backgroundColor": "#ffffff",
+					"border": "none",
+					"textDecoration": "none",
+					"writingMode": "horizontal-tb",
+					"alignItems": "center"
+				},
+				"extraStyles": ""
+			},
+			{
+				"name": "Paragraph1",
+				"type": "Markdown",
+				"row": 18,
+				"column": 12,
+				"width": 120,
+				"height": 15,
+				"text": "* First item\n* Second item\n* Third item\n",
+				"style": {
+					"fontSize": "22px",
+					"fontWeight": "normal",
+					"textAlign": "left",
+					"verticalAlign": "start",
+					"color": "#000000",
+					"border": "none",
+					"textDecoration": "none",
+					"writingMode": "horizontal-tb"
+				}
+			},
+			{
+				"name": "Paragraph0",
+				"type": "Paragraph",
+				"row": 16,
+				"column": 12,
+				"width": 70,
+				"height": 2,
+				"text": "Enter Paragraph Text",
+				"style": {
+					"fontSize": "15px",
+					"fontWeight": "normal",
+					"textAlign": "left",
+					"verticalAlign": "start",
+					"color": "#000000",
+					"border": "none",
+					"textDecoration": "none",
+					"writingMode": "horizontal-tb"
+				}
+			},
+			{
+				"name": "DataTable0",
+				"type": "DataTable",
+				"row": 32,
+				"column": 12,
+				"width": 135,
+				"height": 50,
+				"columns": [
+					{
+						"name": "Column 1"
+					},
+					{
+						"name": "Column 2"
+					},
+					{
+						"name": "Column 3"
+					},
+					{
+						"name": "Column 4"
+					}
+				],
+				"data": [
+					[
+						"Row 1",
+						0,
+						0,
+						0
+					],
+					[
+						"Row 2",
+						10,
+						10,
+						10
+					],
+					[
+						"Row 3",
+						20,
+						20,
+						20
+					],
+					[
+						"Row 4",
+						30,
+						30,
+						30
+					],
+					[
+						"Row 5",
+						40,
+						40,
+						40
+					],
+					[
+						"Row 6",
+						50,
+						50,
+						50
+					],
+					[
+						"Row 7",
+						60,
+						60,
+						60
+					]
+				]
+			}
+		]
+	},
+	"inputVariables": [
+		{
+			"name": "col_defs",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "DataTable0",
+					"fieldName": "columns"
+				}
+			]
+		},
+		{
+			"name": "data",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "DataTable0",
+					"fieldName": "data"
+				}
+			]
+		},
+		{
+			"name": "headline",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "Header0",
+					"fieldName": "text"
+				}
+			]
+		},
+		{
+			"name": "sub_headline",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "Paragraph0",
+					"fieldName": "text"
+				}
+			]
+		},
+		{
+			"name": "exec_summary",
+			"isRequired": false,
+			"defaultValue": null,
+			"targets": [
+				{
+					"elementName": "Paragraph1",
+					"fieldName": "text"
+				}
+			]
+		}
+	]
+}
+"""
+
 logger = logging.getLogger(__name__)
 
 @skill(
@@ -95,7 +298,7 @@ logger = logging.getLogger(__name__)
             name="table_ppt_layout",
             parameter_type="visualization",
             description="Table PPT Layout",
-            default_value=default_table_layout
+            default_value=default_ppt_table_layout
         )
     ]
 )
