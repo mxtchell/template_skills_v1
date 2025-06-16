@@ -57,7 +57,7 @@ default_ppt_table_layout = """
 				"column": 12,
 				"width": 120,
 				"height": 15,
-				"text": "* First item\n* Second item\n* Third item\n",
+				"text": "* First item\\n* Second item\\n* Third item\\n",
 				"style": {
 					"fontSize": "22px",
 					"fontWeight": "normal",
