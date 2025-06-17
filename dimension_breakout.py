@@ -14,7 +14,6 @@ from skill_framework import SkillInput, SkillVisualization, skill, SkillParamete
 from skill_framework.layouts import wire_layout
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
-from skill_framework.layouts import wire_layout
 
 logger = logging.getLogger(__name__)
 

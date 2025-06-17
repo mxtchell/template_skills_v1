@@ -214,15 +214,11 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
     return viz, slides, insights, max_response_prompt
 
 if __name__ == '__main__':
-    # Create a custom slides visualization layout
-    custom_slides_layout = default_trend_chart_layout  # You can customize this if needed
-
     skill_input: SkillInput = trend.create_input(arguments={
         'metrics': ["sales", "volume"],
         'periods': ["2021", "2022"],
         'growth_type': "Y/Y",
-        "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}],
-        "slides_viz_layout": custom_slides_layout
+        "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]
     })
     out = trend(skill_input)
     preview_skill(trend, out)

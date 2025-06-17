@@ -1,5 +1,5 @@
 -c platform_constraints.txt
--e ../skill_framework
+skill-framework[ui]
 answerrocket-client
 numpy
 pandas
