@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.2
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.4
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -157,12 +157,13 @@ pydantic-core==2.20.1
 pygments==2.18.0
     # via
     #   -c platform_constraints.txt
+    #   pytest
     #   rich
 pyparsing==3.0.9
     # via
     #   -c platform_constraints.txt
     #   matplotlib
-pytest==8.3.5
+pytest==8.4.0
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
@@ -242,7 +243,7 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   typer
     #   uvicorn
-uvicorn[standard]==0.34.2
+uvicorn[standard]==0.34.3
     # via
     #   fastapi
     #   fastapi-cli

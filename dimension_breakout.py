@@ -1,17 +1,20 @@
 from __future__ import annotations
+
+import json
+import logging
 from types import SimpleNamespace
 
-from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, ParameterDisplayDescription
+import jinja2
+from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, \
+    default_bridge_chart_viz, default_ppt_table_layout
+from ar_analytics.helpers.df_meta_util import apply_metadata_to_layout_element
+from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, \
+    ParameterDisplayDescription
+from skill_framework.layouts import wire_layout
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
-
-from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, default_bridge_chart_viz, default_ppt_table_layout
-
-import jinja2
-import logging
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +141,7 @@ def simple_breakout(parameters: SkillInput):
         ppt_slides=slides,
         parameter_display_descriptions=param_info,
         followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")],
-        export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
+        export_data=[ExportData(name=name, id=df.max_metadata.get_id(), data=df) for name, df in export_data.items()]
     )
 
 def find_footnote(footnotes, df):
@@ -180,7 +183,9 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
         table_vars = get_table_layout_vars(table)
         table_vars["hide_footer"] = hide_footer
         table_vars["footer"] = f"*{dim_note.strip()}" if dim_note else "No additional info."
-        rendered = wire_layout(viz_layout, {**general_vars, **table_vars})
+        meta_viz_layout = apply_metadata_to_layout_element(viz_layout, "DataTable0",
+                                                           {"sourceDataframeId": table.max_metadata.get_id()})
+        rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
         if table_ppt_layout is not None:
             slide = wire_layout(json.loads(table_ppt_layout), {**general_vars, **table_vars})
@@ -190,7 +195,11 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
 
     if bridge_chart_data is not None:
         table_vars["bridge_data"] = [{ "data": bridge_chart_data.to_dict(orient="records") }] if bridge_chart_data is not None else []
-        rendered = wire_layout( json.loads(bridge_chart_viz_layout), {**general_vars, **table_vars})
+        bridge_viz_layout = json.loads(bridge_chart_viz_layout)
+        meta_viz_layout = apply_metadata_to_layout_element(bridge_viz_layout, "HighchartsChart0",
+                                                           {
+                                                               "sourceDataframeId": bridge_chart_data.max_metadata.get_id()})
+        rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 
     return viz_list, slides, insights, max_response_prompt, export_data

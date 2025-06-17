@@ -1,17 +1,18 @@
 from __future__ import annotations
+
+import json
+import logging
 from types import SimpleNamespace
 
-from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, ParameterDisplayDescription
+import jinja2
+from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
+from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, \
+    get_table_layout_vars, default_ppt_table_layout, default_ppt_trend_chart_layout, default_ppt_trend_growth_chart_layout, default_ppt_trend_diff_chart_layout
+from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, \
+    ParameterDisplayDescription
+from skill_framework.layouts import wire_layout
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
-from skill_framework.layouts import wire_layout
-
-from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
-from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, default_ppt_table_layout, default_ppt_trend_chart_layout, default_ppt_trend_growth_chart_layout, default_ppt_trend_diff_chart_layout, get_table_layout_vars
-
-import jinja2
-import logging
-import json
 
 RUNNING_LOCALLY = False
 
@@ -149,6 +150,8 @@ def trend(parameters: SkillInput):
                                                 parameters.arguments.diff_chart_ppt_layout,
                                                 parameters.arguments.table_ppt_export_viz_layout)
 
+    display_charts = env.trend.display_charts
+
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=None,
@@ -156,7 +159,8 @@ def trend(parameters: SkillInput):
         ppt_slides=slides,
         parameter_display_descriptions=param_info,
         followup_questions=[],
-        export_data=[ExportData(name="Metrics Table", data=tables[0])]
+        export_data=[ExportData(name="Metrics Table", data=tables[0]),
+                     *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
 
 def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, abs_chart_ppt_layout, growth_chart_ppt_layout, diff_chart_ppt_layout, table_ppt_export_viz_layout):
