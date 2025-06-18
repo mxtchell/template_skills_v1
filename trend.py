@@ -1071,6 +1071,7 @@ class TrendAnalysis:
         ## each chart is a dictionary that gets referenced in the jinja template by its key (name of chart)
         charts = {}
 
+        # TODO: Confirm that we are getting the axis grouping rules
         axis_grouping_rules = self.env.trend_parameters.get('axis_grouping')
 
 
@@ -1898,7 +1899,6 @@ class TrendAnalysis:
 
         # filter to specified metrics, don't include component metrics unless specified. don't include total columns
         chart_df = df[(df['metric'].isin(metrics)) & (~df["date_column"].isnull())]
-        # TODO: Changing the get_charts function
         self.display_charts = self.get_charts(chart_df, metrics, dims)
         self.default_chart_template = self.get_default_chart_jinja()
         self.default_chart = self.get_default_chart_jinja(render_jinja=True)  # keeping around for backwards compatibility, renders the first chart
@@ -1944,7 +1944,6 @@ class TrendTemplateParameterSetup(TemplateParameterSetup):
 
         # set the skill platform on env
         env.sp = sp
-        
 
     """
     Creates parameters necessary to run the trend skill from the copilot skill parameter values and dataset.
@@ -2102,8 +2101,11 @@ class TrendTemplateParameterSetup(TemplateParameterSetup):
 
         trend_parameters["ParameterDisplayDescription"] = pills
 
-        # TODO: Adding axis grouping rules to trend_parameters
-        trend_parameters["axis_grouping_rules"] = self.dataset_metadata.get("misc_info", {}).get("axis_grouping")
+        # TODO: Adding axis grouping rules to trend_parameters=
+        print(f"Dataset metadata misc_info: {self.dataset_metadata.get('misc_info', {})}")
+        trend_parameters["axis_grouping"] = self.dataset_metadata.get("misc_info", {}).get("axis_grouping")
+        trend_parameters["axis_grouping"] = "hello"
+        print(f"Axis grouping rules: {trend_parameters['axis_grouping']}")
 
         ## Set the trend parameters
         env.trend_parameters = trend_parameters

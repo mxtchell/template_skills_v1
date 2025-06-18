@@ -222,8 +222,6 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
 
         table_vars["chart_categories"] = categories
         table_vars["chart_data"] = chart_data
-
-        print(f"Table vars: {table_vars}")
         
         # meta_viz_layout = apply_metadata_to_layout_element(viz_layout, "HighchartsChart0",
         #                                                 {"sourceDataframeId": table.max_metadata.get_id()})

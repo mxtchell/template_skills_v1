@@ -2,10 +2,11 @@ import os
 from types import SimpleNamespace
 
 from answer_rocket import AnswerRocketClient
-from skill_framework import ParameterDisplayDescription
+from skill_framework import ParameterDisplayDescription, SkillInput
 from ar_analytics.helpers.dataset_context import DatasetContext
-from ar_analytics.trend import TrendTemplateParameterSetup, AdvanceTrend
+from ar_analytics.trend import TrendTemplateParameterSetup, AdvanceTrend, TrendAnalysis
 from ar_analytics.helpers.utils import render_layout
+from skill_framework.preview import preview_skill
 
 
 def test_trend():
