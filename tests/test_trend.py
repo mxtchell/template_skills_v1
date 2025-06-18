@@ -57,3 +57,19 @@ def test_trend_variance():
 
     assert True
 
+
+def test_trend_analysis_directly():
+    parameters = {"metrics": ["sales", "volume"], "breakouts": [], "periods": ["2022"], "growth_type": None}  # No growth type
+    
+    default_param_dict = {"periods": [], "metrics": None, "limit_n": 10, "breakouts": [], "growth_type": None, "other_filters": [], "time_granularity": None}
+    env = SimpleNamespace(**default_param_dict)
+    
+    vars(env).update(parameters)
+    TrendTemplateParameterSetup(env=env)
+    env.trend = TrendAnalysis.from_env(env=env)
+    df = env.trend.run_from_env()
+    
+    charts = env.trend.get_charts(df, parameters["metrics"], parameters["breakouts"])
+    print(f"charts: {charts}")
+
+    assert True
