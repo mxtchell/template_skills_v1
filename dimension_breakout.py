@@ -181,7 +181,7 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
                 if len(row_data) > 1:
                     sales_current_str = row_data[1]
                     # Remove $ and commas, then convert to float
-                    sales_current_clean = sales_current_str.replace('$', '').replace(',', '')
+                    sales_current_clean = sales_current_str.replace('$', '').replace(',', '').replace('%', '')
                     sales_current_values.append(float(sales_current_clean))
         
         # Format sales data as required
