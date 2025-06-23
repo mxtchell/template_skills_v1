@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import jinja2
 from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
 from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, \
-    get_table_layout_vars, default_ppt_table_layout, default_ppt_trend_chart_layout, default_ppt_trend_growth_chart_layout, default_ppt_trend_diff_chart_layout
+    get_table_layout_vars, default_ppt_table_layout, default_ppt_trend_chart_layout
 from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, \
     ParameterDisplayDescription
 from skill_framework.layouts import wire_layout
@@ -90,22 +90,10 @@ logger = logging.getLogger(__name__)
             default_value=default_trend_chart_layout
         ),
         SkillParameter(
-            name="abs_chart_ppt_layout",
+            name="chart_ppt_layout",
             parameter_type="visualization",
-            description="abs chart slide Viz Layout",
+            description="chart slide Viz Layout",
             default_value=default_ppt_trend_chart_layout
-        ),
-        SkillParameter(
-            name="growth_chart_ppt_layout",
-            parameter_type="visualization",
-            description="growth chart slide Viz Layout",
-            default_value=default_ppt_trend_growth_chart_layout
-        ),
-        SkillParameter(
-            name="diff_chart_ppt_layout",
-            parameter_type="visualization",
-            description="diff chart slide Viz Layout",
-            default_value=default_ppt_trend_diff_chart_layout
         ),
         SkillParameter(
             name="table_ppt_export_viz_layout",
@@ -145,9 +133,7 @@ def trend(parameters: SkillInput):
                                                 parameters.arguments.insight_prompt,
                                                 parameters.arguments.table_viz_layout,
                                                 parameters.arguments.chart_viz_layout,
-                                                parameters.arguments.abs_chart_ppt_layout,
-                                                parameters.arguments.growth_chart_ppt_layout,
-                                                parameters.arguments.diff_chart_ppt_layout,
+                                                parameters.arguments.chart_ppt_layout,
                                                 parameters.arguments.table_ppt_export_viz_layout)
 
     display_charts = env.trend.display_charts
@@ -163,7 +149,34 @@ def trend(parameters: SkillInput):
                      *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
 
-def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, abs_chart_ppt_layout, growth_chart_ppt_layout, diff_chart_ppt_layout, table_ppt_export_viz_layout):
+def map_chart_variables(chart_vars, prefix):
+    """
+    Maps prefixed chart variables to generic variable names expected by the layout.
+
+    Args:
+        chart_vars: Dictionary containing all chart variables with prefixes
+        prefix: The prefix to extract (e.g., 'absolute_', 'growth_', 'difference_')
+
+    Returns:
+        Dictionary with mapped variables using generic names
+    """
+    suffixes = ['series', 'x_axis_categories', 'y_axis', 'metric_name', 'meta_df_id']
+
+    mapped_vars = {}
+
+    for suffix in suffixes:
+        prefixed_key = f"{prefix}{suffix}"
+        if prefixed_key in chart_vars:
+            mapped_vars[suffix] = chart_vars[prefixed_key]
+
+    if 'footer' in chart_vars:
+        mapped_vars['footer'] = chart_vars['footer']
+    if 'hide_footer' in chart_vars:
+        mapped_vars['hide_footer'] = chart_vars['hide_footer']
+
+    return mapped_vars
+
+def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, chart_ppt_layout, table_ppt_export_viz_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -187,16 +200,20 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
         chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "No additional info."
         rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
         viz.append(SkillVisualization(title=name, layout=rendered))
-        try:
-            abs_slide = wire_layout(json.loads(abs_chart_ppt_layout), {**tab_vars, **chart_vars})
-            slides.append(abs_slide)
-            if "hide_growth_chart" not in chart_vars or not chart_vars["hide_growth_chart"]:
-                growth_slide = wire_layout(json.loads(growth_chart_ppt_layout), {**tab_vars, **chart_vars})
-                slides.append(growth_slide)
-                diff_slide = wire_layout(json.loads(diff_chart_ppt_layout), {**tab_vars, **chart_vars})
-                slides.append(diff_slide)
-        except Exception as e:
-            logger.error(f"Error rendering chart ppt slide: {e}")
+
+        prefixes = ["absolute_", "growth_", "difference_"]
+
+        for prefix in prefixes:
+            if (prefix in ["growth_", "difference_"] and
+                chart_vars.get("hide_growth_chart", False)):
+                continue
+
+            try:
+                mapped_vars = map_chart_variables(chart_vars, prefix)
+                slide = wire_layout(json.loads(chart_ppt_layout), {**tab_vars, **mapped_vars})
+                slides.append(slide)
+            except Exception as e:
+                logger.error(f"Error rendering chart ppt slide for prefix '{prefix}' in chart '{name}': {e}")
 
     table_vars = get_table_layout_vars(tables[0])
     table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
