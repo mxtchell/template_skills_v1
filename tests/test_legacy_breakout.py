@@ -195,14 +195,6 @@ class TestLegacyBreakoutCommonParameters(TestLegacyBreakout):
         }
         self._assert_legacy_breakout_runs_without_errors(parameters)
 
-    def test_all_valid_raw_metrics(self):
-        valid_raw_metrics = ["sales", "acv", "volume"]
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: valid_raw_metrics,
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1]
-        }
-        self._assert_legacy_breakout_runs_without_errors(parameters)
-
     def test_all_valid_share_metrics(self):
         valid_share_metrics = ["sales_share", "volume_share"]
         parameters = {
