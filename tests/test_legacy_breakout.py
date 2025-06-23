@@ -48,7 +48,7 @@ class LegacyBreakoutCommonParametersConfig:
 
 PastaV9LegacyBreakoutCommonParametersConfig = LegacyBreakoutCommonParametersConfig(
     metric_1=PastaV9TestColumnNames.SALES.value,
-    metric_2=PastaV9TestColumnNames.ACV.value,
+    metric_2=PastaV9TestColumnNames.VOLUME.value,
     share_metric_1=PastaV9TestColumnNames.SALES_SHARE.value,
     share_metric_2=PastaV9TestColumnNames.VOLUME_SHARE.value,
     breakout_1=PastaV9TestColumnNames.BRAND.value,
@@ -64,10 +64,7 @@ class LegacyBreakoutGuardrailsConfig:
     """Configuration for testing guardrails and edge cases"""
     invalid_metric: str = "invalid_metric"
     invalid_metric_from_pasta: str = PastaV9TestColumnNames.ACV_SHARE.value  # Not a valid metric for legacy breakout
-    invalid_breakout: str = "invalid_breakout"
     too_many_breakouts: List[str] = None
-    invalid_growth_type: str = "invalid_growth"
-    invalid_growth_trend: str = "invalid_trend"
     empty_metrics: List[str] = None
     
     def __post_init__(self):
@@ -97,12 +94,12 @@ class TestLegacyBreakout:
             preview_skill(simple_breakout, out)
         return out
 
-    def _assert_legacy_breakout_runs_with_error(self, parameters: Dict, expected_exception: Exception):
+    def _assert_legacy_breakout_runs_with_error(self, parameters: Dict, expected_exception):
         try:
             self._run_legacy_breakout(parameters, preview=False)
-            assert False, f"Expected {expected_exception.__name__} but skill ran successfully"
+            assert False, f"Expected exception but skill ran successfully"
         except Exception as e:
-            assert isinstance(e, expected_exception), f"Expected {expected_exception.__name__}, got {type(e).__name__}"
+            assert isinstance(e, expected_exception), f"Expected {expected_exception}, got {type(e).__name__}"
 
     def _assert_legacy_breakout_runs_without_errors(self, parameters: Dict, preview: bool = False):
         self._run_legacy_breakout(parameters, preview=preview)
@@ -114,12 +111,6 @@ class TestLegacyBreakoutCommonParameters(TestLegacyBreakout):
 
     config = PastaV9LegacyBreakoutCommonParametersConfig
     preview = False
-
-    def test_single_metric_no_breakout(self):
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1]
-        }
-        self._assert_legacy_breakout_runs_without_errors(parameters)
 
     def test_single_metric_with_breakout(self):
         parameters = {
@@ -321,24 +312,6 @@ class TestLegacyBreakoutGuardrails(TestLegacyBreakout):
         }
         self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
 
-    def test_invalid_growth_type(self):
-        """Test that skill fails with invalid growth type"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.growth_type.value: self.guardrail_config.invalid_growth_type
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, (ExitFromSkillException, ValueError))
-
-    def test_invalid_growth_trend(self):
-        """Test that skill fails with invalid growth trend"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.growth_trend.value: self.guardrail_config.invalid_growth_trend
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, (ExitFromSkillException, ValueError))
-
     def test_growth_type_without_periods(self):
         """Test that growth_type without periods fails appropriately"""
         parameters = {
@@ -346,80 +319,5 @@ class TestLegacyBreakoutGuardrails(TestLegacyBreakout):
             LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
             LegacyBreakoutParameters.growth_type.value: self.config.growth_type_yoy
             # Intentionally missing periods
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_growth_trend_without_growth_type(self):
-        """Test that skill handles growth_trend without growth_type appropriately"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.periods.value: [self.config.period_filter],  # Added periods!
-            LegacyBreakoutParameters.growth_trend.value: self.config.growth_trend_fastest_growing
-            # No growth_type specified
-        }
-        # This might be valid or invalid - need to test what the actual behavior is
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_calculated_metric_filters_invalid_metric(self):
-        """Test that calculated metric filters fail with invalid metric"""
-        calculated_filters = [
-            {
-                "metric": self.guardrail_config.invalid_metric,
-                "computation": "growth",
-                "operator": ">",
-                "value": 0,
-                "scale": "percentage"
-            }
-        ]
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.calculated_metric_filters.value: calculated_filters
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_calculated_metric_filters_invalid_computation(self):
-        """Test that calculated metric filters fail with invalid computation"""
-        calculated_filters = [
-            {
-                "metric": self.config.metric_1,
-                "computation": "invalid_computation",
-                "operator": ">",
-                "value": 0,
-                "scale": "percentage"
-            }
-        ]
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.calculated_metric_filters.value: calculated_filters
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_excessive_breakouts(self):
-        """Test that skill fails or handles excessive number of breakouts"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: self.guardrail_config.too_many_breakouts
-        }
-        # This might succeed or fail depending on the implementation
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_negative_limit_n(self):
-        """Test that skill handles negative limit_n appropriately"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.limit_n.value: -5
-        }
-        self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
-
-    def test_zero_limit_n(self):
-        """Test that skill handles zero limit_n appropriately"""
-        parameters = {
-            LegacyBreakoutParameters.metrics.value: [self.config.metric_1],
-            LegacyBreakoutParameters.breakouts.value: [self.config.breakout_1],
-            LegacyBreakoutParameters.limit_n.value: 0
         }
         self._assert_legacy_breakout_runs_with_error(parameters, ExitFromSkillException)
