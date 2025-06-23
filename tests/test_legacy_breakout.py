@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List
 from enum import Enum
-from dimension_breakout import simple_breakout  # Assuming the file is named simple_breakout.py
+from dimension_breakout import simple_breakout
 from skill_framework import ExitFromSkillException, SkillInput
 from skill_framework.preview import preview_skill
 from dataset_definitions.pasta_v9 import PastaV9TestColumnNames
@@ -64,19 +64,9 @@ class LegacyBreakoutGuardrailsConfig:
     """Configuration for testing guardrails and edge cases"""
     invalid_metric: str = "invalid_metric"
     invalid_metric_from_pasta: str = PastaV9TestColumnNames.ACV_SHARE.value  # Not a valid metric for legacy breakout
-    too_many_breakouts: List[str] = None
     empty_metrics: List[str] = None
     
     def __post_init__(self):
-        if self.too_many_breakouts is None:
-            # Assuming more than 3-4 breakouts might be too many
-            self.too_many_breakouts = [
-                PastaV9TestColumnNames.BRAND.value,
-                PastaV9TestColumnNames.BASE_SIZE.value,
-                PastaV9TestColumnNames.MANUFACTURER.value,
-                PastaV9TestColumnNames.SUB_CATEGORY.value,
-                "excessive_breakout"
-            ]
         if self.empty_metrics is None:
             self.empty_metrics = []
 
