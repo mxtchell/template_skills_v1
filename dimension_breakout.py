@@ -17,8 +17,6 @@ from skill_framework.skills import ExportData
 
 logger = logging.getLogger(__name__)
 
-
-
 @skill(
     name=dimension_breakout_config.name,
     llm_name=dimension_breakout_config.llm_name,
@@ -160,41 +158,6 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
     viz_list = []
     export_data = {}
 
-    def get_table_contents(table_vars):
-        table_cols = table_vars.get("col_defs", [])
-        # print(f"Table cols: {table_cols}")
-
-        table_data = table_vars.get("data", [])
-
-        # Convert list of dicts with 'data' key to list of lists
-        formatted_data = [item['data'] for item in table_data]
-        return table_cols, formatted_data
-    
-    
-    def get_chart_sales_data(table_data):
-        sales_current_values = []
-        
-        for row in table_data:
-            row_data = row.get("data", [])
-            if len(row_data) > 0:
-                # Second element is Sales (Current) - need to convert from string to number
-                if len(row_data) > 1:
-                    sales_current_str = row_data[1]
-                    # Remove $ and commas, then convert to float
-                    sales_current_clean = sales_current_str.replace('$', '').replace(',', '').replace('%', '')
-                    sales_current_values.append(float(sales_current_clean))
-        
-        # Format sales data as required
-        sales_data = [
-            {
-                "name": "Sales (Current)",
-                "data": sales_current_values
-            }
-        ]
-        
-        return sales_data
-
-
     general_vars = {"headline": title if title else "Total",
 					"sub_headline": subtitle or "Breakout Analysis",
 					"hide_growth_warning": False if warnings else True,
@@ -203,40 +166,30 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
 
     viz_layout = json.loads(viz_layout)
 
-    
     for name, table in tables.items():
         export_data[name] = table
         dim_note = find_footnote(footnotes, table)
         hide_footer = False if dim_note else True
-
-        # print(f"Name of the col: {name}")
-        # print(f"Content of table: {table}")
-        
         table_vars = get_table_layout_vars(table)
-
-        # table_cols, data = get_table_contents(table_vars)
-        categories = table[name].to_list()
-        # print(f"Here are the categories {categories}")
-        chart_data = get_chart_sales_data(table_vars["data"])
-        # print(f"Chart data: {chart_data}")
-
-        table_vars["chart_categories"] = categories
-        table_vars["chart_data"] = chart_data
-        
-        # meta_viz_layout = apply_metadata_to_layout_element(viz_layout, "HighchartsChart0",
-        #                                                 {"sourceDataframeId": table.max_metadata.get_id()})
-        # rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
-        # viz_list.append(SkillVisualization(title=name, layout=rendered))
-
-        
+        table_vars["hide_footer"] = hide_footer
+        table_vars["footer"] = f"*{dim_note.strip()}" if dim_note else "No additional info."
         meta_viz_layout = apply_metadata_to_layout_element(viz_layout, "DataTable0",
-                                                        {"sourceDataframeId": table.max_metadata.get_id()})
+                                                           {"sourceDataframeId": table.max_metadata.get_id()})
+        rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
+        viz_list.append(SkillVisualization(title=name, layout=rendered))
+
+    if bridge_chart_data is not None:
+        table_vars["bridge_data"] = [{ "data": bridge_chart_data.to_dict(orient="records") }] if bridge_chart_data is not None else []
+        bridge_viz_layout = json.loads(bridge_chart_viz_layout)
+        meta_viz_layout = apply_metadata_to_layout_element(bridge_viz_layout, "HighchartsChart0",
+                                                           {
+                                                               "sourceDataframeId": bridge_chart_data.max_metadata.get_id()})
         rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 
     return viz_list, insights, max_response_prompt, export_data
 
 if __name__ == '__main__':
-    skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume", "sales_share"], 'breakouts': ["brand"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
+    skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume", "sales_share"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
     out = simple_breakout(skill_input)
     preview_skill(simple_breakout, out)
