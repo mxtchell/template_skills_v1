@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import jinja2
 from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
 from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, \
-    get_table_layout_vars
+    get_table_layout_vars, default_ppt_trend_chart_layout, default_ppt_table_layout
 from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, \
     ParameterDisplayDescription
 from skill_framework.layouts import wire_layout
@@ -15,9 +15,6 @@ from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
 RUNNING_LOCALLY = False
-
-default_ppt_table_layout = ""
-default_ppt_trend_chart_layout = ""
 
 
 logger = logging.getLogger(__name__)
