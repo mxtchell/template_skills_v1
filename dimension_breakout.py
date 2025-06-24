@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import jinja2
 from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
 from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, \
-    default_bridge_chart_viz
+    default_bridge_chart_viz, default_ppt_table_layout
 from ar_analytics.helpers.df_meta_util import apply_metadata_to_layout_element
 from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, \
     ParameterDisplayDescription
@@ -92,6 +92,12 @@ logger = logging.getLogger(__name__)
             parameter_type="visualization",
             description="Bridge Chart Viz Layout",
             default_value=default_bridge_chart_viz
+        ),
+        SkillParameter(
+            name="table_ppt_layout",
+            parameter_type="visualization",
+            description="Table PPT Layout",
+            default_value=default_ppt_table_layout
         )
     ]
 )
@@ -114,7 +120,7 @@ def simple_breakout(parameters: SkillInput):
     insights_dfs = [env.ba.df_notes, env.ba.breakout_facts, env.ba.subject_facts]
     followups = env.ba.get_suggestions()
 
-    viz, insights, final_prompt, export_data = render_layout(tables,
+    viz, slides, insights, final_prompt, export_data = render_layout(tables,
                                                             env.ba.get_display_bridge_charts(),
                                                             env.ba.title,
                                                             env.ba.subtitle,
@@ -124,12 +130,14 @@ def simple_breakout(parameters: SkillInput):
                                                             parameters.arguments.max_prompt,
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout,
-                                                            parameters.arguments.bridge_chart_viz_layout)
+                                                            parameters.arguments.bridge_chart_viz_layout,
+                                                            parameters.arguments.table_ppt_layout)
 
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=None,
         visualizations=viz,
+        ppt_slides=slides,
         parameter_display_descriptions=param_info,
         followup_questions=[SuggestedQuestion(label=f.get("label"), question=f.get("question")) for f in followups if f.get("label")],
         export_data=[ExportData(name=name, id=df.max_metadata.get_id(), data=df) for name, df in export_data.items()]
@@ -144,7 +152,7 @@ def find_footnote(footnotes, df):
             break
     return dim_note
 
-def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout, bridge_chart_viz_layout):
+def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warnings, footnotes, max_prompt, insight_prompt, viz_layout, bridge_chart_viz_layout, table_ppt_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -156,6 +164,7 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
     ar_utils = ArUtils()
     insights = ar_utils.get_llm_response(insight_template)
     viz_list = []
+    slides = []
     export_data = {}
 
     general_vars = {"headline": title if title else "Total",
@@ -177,6 +186,11 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
                                                            {"sourceDataframeId": table.max_metadata.get_id()})
         rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
+        if table_ppt_layout is not None:
+            slide = wire_layout(json.loads(table_ppt_layout), {**general_vars, **table_vars})
+            slides.append(slide)
+        else:
+            slides.append(rendered)
 
     if bridge_chart_data is not None:
         table_vars["bridge_data"] = [{ "data": bridge_chart_data.to_dict(orient="records") }] if bridge_chart_data is not None else []
@@ -187,7 +201,7 @@ def render_layout(tables, bridge_chart_data, title, subtitle, insights_dfs, warn
         rendered = wire_layout(meta_viz_layout, {**general_vars, **table_vars})
         viz_list.append(SkillVisualization(title=name, layout=rendered))
 
-    return viz_list, insights, max_response_prompt, export_data
+    return viz_list, slides, insights, max_response_prompt, export_data
 
 if __name__ == '__main__':
     skill_input: SkillInput = simple_breakout.create_input(arguments={'metrics': ["sales", "volume", "sales_share"], 'breakouts': ["brand", "manufacturer"], 'periods': ["2022"], 'growth_type': "Y/Y", 'other_filters': []})
