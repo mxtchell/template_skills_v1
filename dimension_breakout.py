@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import jinja2
 from ar_analytics import BreakoutAnalysis, BreakoutAnalysisTemplateParameterSetup, ArUtils
 from ar_analytics.defaults import dimension_breakout_config, default_table_layout, get_table_layout_vars, \
-    default_bridge_chart_viz, default_ppt_table_layout
+    default_bridge_chart_viz
 from ar_analytics.helpers.df_meta_util import apply_metadata_to_layout_element
 from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, SuggestedQuestion, \
     ParameterDisplayDescription
@@ -16,6 +16,8 @@ from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
 logger = logging.getLogger(__name__)
+
+default_ppt_table_layout = ""
 
 @skill(
     name=dimension_breakout_config.name,
