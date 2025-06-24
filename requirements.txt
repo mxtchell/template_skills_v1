@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.4
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.5
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -57,7 +57,7 @@ exceptiongroup==1.2.2
     #   -c platform_constraints.txt
     #   anyio
     #   pytest
-fastapi[standard]==0.115.12
+fastapi[standard]==0.115.13
     # via skill-framework
 fastapi-cli[standard]==0.0.7
     # via fastapi
@@ -163,7 +163,7 @@ pyparsing==3.0.9
     # via
     #   -c platform_constraints.txt
     #   matplotlib
-pytest==8.4.0
+pytest==8.4.1
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
@@ -249,7 +249,7 @@ uvicorn[standard]==0.34.3
     #   fastapi-cli
 uvloop==0.21.0
     # via uvicorn
-watchfiles==1.0.5
+watchfiles==1.1.0
     # via uvicorn
 websockets==15.0.1
     # via uvicorn

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import jinja2
 from ar_analytics import AdvanceTrend, TrendTemplateParameterSetup, ArUtils
 from ar_analytics.defaults import trend_analysis_config, default_trend_chart_layout, default_table_layout, \
-    get_table_layout_vars
+    get_table_layout_vars, default_ppt_trend_chart_layout, default_ppt_table_layout
 from skill_framework import SkillVisualization, skill, SkillParameter, SkillInput, SkillOutput, \
     ParameterDisplayDescription
 from skill_framework.layouts import wire_layout
@@ -15,6 +15,7 @@ from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 
 RUNNING_LOCALLY = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +89,25 @@ logger = logging.getLogger(__name__)
             parameter_type="visualization",
             description="Chart Viz Layout",
             default_value=default_trend_chart_layout
+        ),
+        SkillParameter(
+            name="chart_ppt_layout",
+            parameter_type="visualization",
+            description="chart slide Viz Layout",
+            default_value=default_ppt_trend_chart_layout
+        ),
+        SkillParameter(
+            name="table_ppt_export_viz_layout",
+            parameter_type="visualization",
+            description="table slide Viz Layout",
+            default_value=default_ppt_table_layout
         )
     ]
 )
 def trend(parameters: SkillInput):
     print(f"Skill received following parameters: {parameters.arguments}")
     param_dict = {"periods": [], "metrics": None, "limit_n": 10, "breakouts": [], "growth_type": None, "other_filters": [], "time_granularity": None}
-    
+
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
@@ -111,7 +124,7 @@ def trend(parameters: SkillInput):
 
     charts = env.trend.get_dynamic_layout_chart_vars()
 
-    viz, insights, final_prompt = render_layout(charts,
+    viz, slides, insights, final_prompt = render_layout(charts,
                                                 tables,
                                                 env.trend.title,
                                                 env.trend.subtitle,
@@ -120,7 +133,9 @@ def trend(parameters: SkillInput):
                                                 parameters.arguments.max_prompt,
                                                 parameters.arguments.insight_prompt,
                                                 parameters.arguments.table_viz_layout,
-                                                parameters.arguments.chart_viz_layout)
+                                                parameters.arguments.chart_viz_layout,
+                                                parameters.arguments.chart_ppt_layout,
+                                                parameters.arguments.table_ppt_export_viz_layout)
 
     display_charts = env.trend.display_charts
 
@@ -128,13 +143,41 @@ def trend(parameters: SkillInput):
         final_prompt=final_prompt,
         narrative=None,
         visualizations=viz,
+        ppt_slides=slides,
         parameter_display_descriptions=param_info,
         followup_questions=[],
         export_data=[ExportData(name="Metrics Table", data=tables[0]),
                      *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
 
-def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout):
+def map_chart_variables(chart_vars, prefix):
+    """
+    Maps prefixed chart variables to generic variable names expected by the layout.
+
+    Args:
+        chart_vars: Dictionary containing all chart variables with prefixes
+        prefix: The prefix to extract (e.g., 'absolute_', 'growth_', 'difference_')
+
+    Returns:
+        Dictionary with mapped variables using generic names
+    """
+    suffixes = ['series', 'x_axis_categories', 'y_axis', 'metric_name', 'meta_df_id']
+
+    mapped_vars = {}
+
+    for suffix in suffixes:
+        prefixed_key = f"{prefix}{suffix}"
+        if prefixed_key in chart_vars:
+            mapped_vars[suffix] = chart_vars[prefixed_key]
+
+    if 'footer' in chart_vars:
+        mapped_vars['footer'] = chart_vars['footer']
+    if 'hide_footer' in chart_vars:
+        mapped_vars['hide_footer'] = chart_vars['hide_footer']
+
+    return mapped_vars
+
+def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, table_viz_layout, chart_viz_layout, chart_ppt_layout, table_ppt_export_viz_layout):
     facts = []
     for i_df in insights_dfs:
         facts.append(i_df.to_dict(orient='records'))
@@ -153,19 +196,47 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
                 "warning": warnings}
 
     viz = []
+    slides = []
     for name, chart_vars in charts.items():
         chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "No additional info."
         rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
         viz.append(SkillVisualization(title=name, layout=rendered))
 
+        prefixes = ["absolute_", "growth_", "difference_"]
+
+        for prefix in prefixes:
+            if (prefix in ["growth_", "difference_"] and
+                chart_vars.get("hide_growth_chart", False)):
+                continue
+
+            try:
+                mapped_vars = map_chart_variables(chart_vars, prefix)
+                slide = wire_layout(json.loads(chart_ppt_layout), {**tab_vars, **mapped_vars})
+                slides.append(slide)
+            except Exception as e:
+                logger.error(f"Error rendering chart ppt slide for prefix '{prefix}' in chart '{name}': {e}")
 
     table_vars = get_table_layout_vars(tables[0])
     table = wire_layout(json.loads(table_viz_layout), {**tab_vars, **table_vars})
     viz.append(SkillVisualization(title="Metrics Table", layout=table))
 
-    return viz, insights, max_response_prompt
+    if table_ppt_export_viz_layout is not None:
+        try: 
+            table_slide = wire_layout(json.loads(table_ppt_export_viz_layout), {**tab_vars, **table_vars})
+            slides.append(table_slide)
+        except Exception as e:
+            logger.error(f"Error rendering table ppt slide: {e}")
+    else:
+        slides.append(table)
+
+    return viz, slides, insights, max_response_prompt
 
 if __name__ == '__main__':
-    skill_input: SkillInput = trend.create_input(arguments={'metrics': ["sales", "volume", "sales_share", "volume_share"], 'periods': ["mat jun 2021"], "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]})
+    skill_input: SkillInput = trend.create_input(arguments={
+        'metrics': ["sales", "volume"],
+        'periods': ["2021", "2022"],
+        'growth_type': "Y/Y",
+        "other_filters": [{"dim": "brand", "op": "=", "val": ["barilla"]}]
+    })
     out = trend(skill_input)
     preview_skill(trend, out)
