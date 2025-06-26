@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
         SkillParameter(
             name="include_drivers",
             parameter_type="code",
-            default_value=False
+            default_value=True
         ),
         SkillParameter(
             name="market_cols",
