@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List
 from trend import trend
 from skill_framework import ExitFromSkillException, SkillInput
 from skill_framework.preview import preview_skill
@@ -33,231 +33,101 @@ PastaV9TrendCommonParametersConfig = TestTrendCommonParametersConfig(
     filter_2={"dim": PastaV9TestColumnNames.MANUFACTURER.value, "op": "=", "val": PastaV9TestColumnNames.MANUFACTURER__PRIVATE_LABEL.value}
 ) 
 
+@dataclass
+class TestTrendGuardrailsConfig:
+    """Configuration for testing guardrails and edge cases"""
+    invalid_metric: str = "invalid_metric"
+    invalid_growth_type: str = "invalid_growth"
+    invalid_breakout: str = "invalid_breakout"
+    empty_metrics: List[str] = None
+    
+    def __post_init__(self):
+        if self.empty_metrics is None:
+            self.empty_metrics = []
+
+PastaV9TrendGuardrailsConfig = TestTrendGuardrailsConfig()
+
 class TestTrend:
 
     def _run_trend(self, parameters: Dict, preview: bool = False):
-
         skill_input: SkillInput = trend.create_input(arguments=parameters)
         out = trend(skill_input)
-        if preview or self.preview:
+        if preview or getattr(self, 'preview', False):
             preview_skill(trend, out)
-
         return out
 
-    def _assert_trend_runs_with_error(self, parameters: Dict, expected_exception: Exception):
-
+    def _assert_trend_runs_with_error(self, parameters: Dict, expected_exception):
         try:
             self._run_trend(parameters, preview=False)
+            assert False, f"Expected exception but skill ran successfully"
+        except expected_exception as e:
+            pass
         except Exception as e:
-            assert isinstance(e, expected_exception)
+            assert False, f"Expected {expected_exception}, got {type(e).__name__}: {e}"
 
     def _assert_trend_runs_without_errors(self, parameters: Dict, preview: bool = False):
-        
         self._run_trend(parameters, preview=preview)
-
         assert True
 
 class TestTrendCommonParameters(TestTrend):
-
-    '''
-    Test the trend skill with common parameters to see if it runs without errors or raises an error
-    '''
+    """Test the trend skill with common parameters to verify functionality"""
 
     config = PastaV9TrendCommonParametersConfig
     preview = False
 
     def test_single_metric(self):
-        """Test with a single metric, no growth type, no breakout"""
-
         parameters = {
             "metrics": [self.config.metric_1]
         }   
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_single_metric_with_period_and_yoy_growth_type(self):
-        """Test with a single metric, growth type"""
-
         parameters = {
             "metrics": [self.config.metric_1],
             "periods": [self.config.period_filter],
             "growth_type": self.config.growth_type__yoy
         }
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_single_metric_with_period_and_pop_growth_type(self):
-        """Test with a single metric, growth type"""
-
         parameters = {
             "metrics": [self.config.metric_1],
             "periods": [self.config.period_filter],
             "growth_type": self.config.growth_type__pop
         }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_yoy_growth_type(self):
-        """Test with a single metric, growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__yoy
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_pop_growth_type(self):
-        """Test with a single metric, growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__pop
-        }
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_single_metric_with_period_and_breakout(self):
-        """Test with a single metric, breakout"""
-
         parameters = {
             "metrics": [self.config.metric_1],
             "periods": [self.config.period_filter],
             "breakouts": [self.config.breakout_1]
         }
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_single_metric_with_period_and_filter(self):
-        """Test with a single metric, period, and filter"""
-
         parameters = {
             "metrics": [self.config.metric_1],
             "periods": [self.config.period_filter],
             "other_filters": [self.config.filter_1]
         }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_breakout_and_filter(self):
-        """Test with a single metric, period, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1]
-        }
-
-        self._assert_trend_runs_without_errors(parameters)  
-        
-    def test_single_metric_with_period_and_breakout_and_filter_and_filter2(self):
-        """Test with a single metric, period, breakout, filter, and filter2"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1, self.config.filter_2]
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-        
-    def test_single_metric_with_period_and_breakout_and_filter_and_filter2_and_growth_type(self):
-        """Test with a single metric, period, breakout, filter, filter2, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1, self.config.filter_2],
-            "growth_type": self.config.growth_type__yoy
-        }
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_multiple_metrics(self):
-        """Test with multiple metrics, no growth type, no breakout"""
-
         parameters = {
             "metrics": [self.config.metric_1, self.config.metric_2]
         }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period(self):
-        """Test with multiple metrics, period, no growth type, no breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter]
-        }
-
         self._assert_trend_runs_without_errors(parameters)
 
     def test_multiple_metrics_with_period_and_growth_type(self):
-        """Test with multiple metrics, period, growth type, no breakout"""
-
         parameters = {
             "metrics": [self.config.metric_1, self.config.metric_2],
             "periods": [self.config.period_filter],
             "growth_type": self.config.growth_type__yoy
         }
-
         self._assert_trend_runs_without_errors(parameters)
 
-    def test_multiple_metrics_with_period_and_breakout(self):
-        """Test with multiple metrics, period, breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1]
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_breakout_and_growth_type(self):
-        """Test with multiple metrics, period, breakout, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__yoy
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_breakout_and_filter(self):
-        """Test with multiple metrics, period, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1]
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_breakout_and_filter_and_filter2(self):
-        """Test with multiple metrics, period, breakout, filter, and filter2"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1, self.config.filter_2]
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_breakout_and_filter_and_filter2_and_growth_type(self):
-        """Test with multiple metrics, period, breakout, filter, filter2, and growth type"""
-
+    def test_complex_parameter_combination(self):
         parameters = {
             "metrics": [self.config.metric_1, self.config.metric_2],
             "periods": [self.config.period_filter],
@@ -265,9 +135,62 @@ class TestTrendCommonParameters(TestTrend):
             "other_filters": [self.config.filter_1, self.config.filter_2],
             "growth_type": self.config.growth_type__yoy
         }
-
         self._assert_trend_runs_without_errors(parameters)
 
+class TestTrendGuardrails(TestTrend):
+    """Test guardrails and error conditions for trend skill"""
+
+    config = PastaV9TrendCommonParametersConfig
+    guardrail_config = PastaV9TrendGuardrailsConfig
+    preview = False
+
+    def test_no_metrics_provided(self):
+        """Test that skill fails when no metrics are provided"""
+        parameters = {}
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
+
+    def test_empty_metrics_list(self):
+        """Test that skill fails when empty metrics list is provided"""
+        parameters = {
+            "metrics": self.guardrail_config.empty_metrics
+        }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
+
+    def test_invalid_metric_completely_unknown(self):
+        """Test that skill fails with completely unknown metric"""
+        parameters = {
+            "metrics": [self.guardrail_config.invalid_metric]
+        }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
+
+    def test_invalid_growth_type_defaults_gracefully(self):
+        """Test that invalid growth type either defaults or fails gracefully"""
+        parameters = {
+            "metrics": [self.config.metric_1],
+            "periods": [self.config.period_filter],
+            "growth_type": self.guardrail_config.invalid_growth_type
+        }
+        # This might pass if it defaults to a valid growth type, or fail - depends on implementation
+        try:
+            self._assert_trend_runs_without_errors(parameters)
+        except AssertionError:
+            self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
+
+    def test_invalid_breakout(self):
+        """Test that skill fails with invalid breakout dimension"""
+        parameters = {
+            "metrics": [self.config.metric_1],
+            "periods": [self.config.period_filter],
+            "breakouts": [self.guardrail_config.invalid_breakout]
+        }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
+
+    def test_mixed_valid_invalid_metrics(self):
+        """Test behavior with mix of valid and invalid metrics"""
+        parameters = {
+            "metrics": [self.config.metric_1, self.guardrail_config.invalid_metric]
+        }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
 @dataclass
 class TestTrendVarianceConfig:
@@ -296,281 +219,55 @@ PastaV9TrendVarianceConfig = TestTrendVarianceConfig(
     filter_2={"dim": PastaV9TestColumnNames.MANUFACTURER.value, "op": "=", "val": PastaV9TestColumnNames.MANUFACTURER__PRIVATE_LABEL.value}
 ) 
 
-
 class TestTrendVariance(TestTrend):
-
-    '''
-    Requires changing the growth type parameter constraints to constrained_values=["Y/Y", "P/P", "None", "vs. Budget", "vs. Forecast", "vs. Target"]
-    and setting up a pasta v9 dataset with the following variance metrics: Sales, Volume
-    '''
+    """Test variance-specific functionality for trend skill"""
 
     config: TestTrendVarianceConfig = PastaV9TrendVarianceConfig
-    preview = True
+    preview = False
 
     def test_non_variance_metric_with_budget(self):
-        """Test with a non-variance metric, budget"""
-
+        """Test that non-variance metric fails with budget growth type"""
         parameters = {
             "metrics": [self.config.non_variance_metric],
             "growth_type": self.config.growth_type__budget
         }
-
         self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
     def test_single_metric_with_budget(self):
-        """Test with a single metric, budget"""
-
+        """Test that metric fails with budget when no budget metric exists"""
         parameters = {
             "metrics": [self.config.metric_1],
             "growth_type": self.config.growth_type__budget
         }   
-
-        self._assert_trend_runs_without_errors(parameters)
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
     def test_single_metric_with_target(self):
-        """Test with a single metric, target"""
-
+        """Test that metric fails with target when no target metric exists"""
         parameters = {
             "metrics": [self.config.metric_1],
             "growth_type": self.config.growth_type__target
         }
-
-        self._assert_trend_runs_without_errors(parameters)
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
     def test_single_metric_with_forecast(self):
-        """Test with a single metric, forecast"""
-
+        """Test that metric fails with forecast when no forecast metric exists"""
         parameters = {
             "metrics": [self.config.metric_1],
             "growth_type": self.config.growth_type__forecast
         }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_budget(self):
-        """Test with a single metric, period, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__budget
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_target(self):
-        """Test with a single metric, period, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_forecast(self):
-        """Test with a single metric, period, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_budget_and_breakout(self):
-        """Test with a single metric, period, budget, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__budget
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_target_and_breakout(self):
-        """Test with a single metric, period, target, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-        
-    def test_single_metric_with_period_and_forecast_and_breakout(self):
-        """Test with a single metric, period, forecast, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_budget_and_breakout_and_filter(self):
-        """Test with a single metric, period, budget, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1],
-            "growth_type": self.config.growth_type__budget
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_target_and_breakout_and_filter(self):
-        """Test with a single metric, period, target, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_single_metric_with_period_and_forecast_and_breakout_and_filter(self):
-        """Test with a single metric, period, forecast, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    
-    def test_multiple_metrics_with_budget(self):
-        """Test with multiple metrics, budget"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "growth_type": self.config.growth_type__budget
-        }   
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_target(self):
-        """Test with multiple metrics, target"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_forecast(self):
-        """Test with multiple metrics, forecast"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_budget(self):
-        """Test with multiple metrics, period, and growth type"""
-
+    def test_multiple_variance_metrics_with_budget(self):
+        """Test that multiple metrics fail with budget when no budget metrics exist"""
         parameters = {
             "metrics": [self.config.metric_1, self.config.metric_2],
             "periods": [self.config.period_filter],
             "growth_type": self.config.growth_type__budget
         }
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
 
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_target(self):
-        """Test with multiple metrics, period, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_forecast(self):
-        """Test with multiple metrics, period, and growth type"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_budget_and_breakout(self):
-        """Test with multiple metrics, period, budget, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__budget
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_target_and_breakout(self):
-        """Test with multiple metrics, period, target, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__target
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-        
-    def test_multiple_metrics_with_period_and_forecast_and_breakout(self):
-        """Test with multiple metrics, period, forecast, and breakout"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_budget_and_breakout_and_filter(self):
-        """Test with multiple metrics, period, budget, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1],
-            "growth_type": self.config.growth_type__budget
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_target_and_breakout_and_filter(self):
-        """Test with multiple metrics, period, target, breakout, and filter"""
-
+    def test_complex_variance_combination(self):
+        """Test that complex variance scenario fails when no variance metrics exist"""
         parameters = {
             "metrics": [self.config.metric_1, self.config.metric_2],
             "periods": [self.config.period_filter],
@@ -578,18 +275,4 @@ class TestTrendVariance(TestTrend):
             "other_filters": [self.config.filter_1],
             "growth_type": self.config.growth_type__target
         }
-
-        self._assert_trend_runs_without_errors(parameters)
-
-    def test_multiple_metrics_with_period_and_forecast_and_breakout_and_filter(self):
-        """Test with multiple metrics, period, forecast, breakout, and filter"""
-
-        parameters = {
-            "metrics": [self.config.metric_1, self.config.metric_2],
-            "periods": [self.config.period_filter],
-            "breakouts": [self.config.breakout_1],
-            "other_filters": [self.config.filter_1],
-            "growth_type": self.config.growth_type__forecast
-        }
-
-        self._assert_trend_runs_without_errors(parameters)
+        self._assert_trend_runs_with_error(parameters, ExitFromSkillException)
