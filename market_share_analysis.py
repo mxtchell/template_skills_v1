@@ -367,9 +367,9 @@ def render_layout(
             metric_drivers_labels,
             subject_metric_drivers,
             decomposition_metric_drivers,
-            ignore_cols=["parent_dim_member", "is_collapsible"],
+            ignore_cols=["parent_dim_member", "is_collapsible", "followup_nl"],
             highlight_col="is_subject",
-            followup_col="msg",
+            followup_col="followup_nl",
             sparkline_col="sparkline"
         )
         # table_vars["hide_footer"] = hide_footer
