@@ -482,6 +482,7 @@ content: {pretty_json("", message["content"])}
     log_it("explanation", run_sql_ai_result.explanation)
     log_it("timing_info", run_sql_ai_result.timing_info)
 
-    for prior_run in run_sql_ai_result.prior_runs:
-        _logger.info("====================== Prior Run: ======================")
-        _dump_sql_ai_result(prior_run)
+    if hasattr(run_sql_ai_result, 'prior_runs'):
+        for prior_run in run_sql_ai_result.prior_runs:
+            _logger.info("====================== Prior Run: ======================")
+            _dump_sql_ai_result(prior_run)
