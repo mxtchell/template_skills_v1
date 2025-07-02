@@ -192,9 +192,13 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
                     format_string = column_metadata_map[col].get("format_string", None)
 
                     if format_string:
+                        from ar_analytics.helpers.utils import SharedFn
+
+                        helper = SharedFn()
+
                         try:
                             formatted_df[col] = formatted_df[col].apply(
-                                lambda x: format(x, format_string) if isinstance(x, (int, float)) else x
+                                lambda x: helper.get_formatted_num(x, format_string) if isinstance(x, (int, float)) else x
                             )
                         except Exception as e:
                             _logger.info(f"Error formatting column '{col}' with format string '{format_string}': {e}")
