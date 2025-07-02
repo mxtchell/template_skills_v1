@@ -10,6 +10,7 @@ class PastaV9TestColumnNames(Enum):
     ACV = "acv"
     VOLUME = "volume"
     SALES_SHARE = "sales_share"
+    VOLUME_SHARE = "volume_share"
     ACV_SHARE = "acv_share"
 
     # Dimensions
