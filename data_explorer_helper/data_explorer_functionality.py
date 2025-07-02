@@ -186,16 +186,16 @@ def run_data_explorer(parameters: SkillInput) -> SkillOutput:
 
             formatted_df = data_explore_state.base_df.copy()
 
+            from ar_analytics.helpers.utils import SharedFn
+
+            helper = SharedFn()
+
             # apply formatting rules from sql_res.column_metadata_map[col].format_string (an example value for this is "%.2f")
             for col in data_explore_state.base_df.columns:
                 if col in column_metadata_map:
                     format_string = column_metadata_map[col].get("format_string", None)
 
                     if format_string:
-                        from ar_analytics.helpers.utils import SharedFn
-
-                        helper = SharedFn()
-
                         try:
                             formatted_df[col] = formatted_df[col].apply(
                                 lambda x: helper.get_formatted_num(x, format_string) if isinstance(x, (int, float)) else x
