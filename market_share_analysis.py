@@ -211,6 +211,8 @@ def get_data(
                         four_space_indent = "    "
                         val = f"{four_space_indent}{four_space_indent}{val}"
 
+                if col == dim_member_col and click_followup != "" and not is_subject:
+                    val = {"value": val, "style": {"text-decoration": "underline"}}
             new_row.append(val)
 
         row_info = {"data": new_row}
