@@ -8,4 +8,4 @@ sqlglot
 jinja2
 pytest
 sqlparse
-git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.5#egg=ar-analytics
+git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.6#egg=ar-analytics
