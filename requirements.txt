@@ -8,7 +8,7 @@ annotated-types==0.7.0
     # via
     #   -c platform_constraints.txt
     #   pydantic
-answerrocket-client==0.2.55
+answerrocket-client==0.2.56
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -19,7 +19,7 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
-ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.5
+ar-analytics @ git+https://bitbucket.org/aglabs/ar-analytics.git@v0.1.6
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -57,7 +57,7 @@ exceptiongroup==1.2.2
     #   -c platform_constraints.txt
     #   anyio
     #   pytest
-fastapi[standard]==0.115.13
+fastapi[standard]==0.115.14
     # via skill-framework
 fastapi-cli[standard]==0.0.7
     # via fastapi
@@ -190,7 +190,7 @@ rich==14.0.0
     # via
     #   rich-toolkit
     #   typer
-rich-toolkit==0.14.7
+rich-toolkit==0.14.8
     # via fastapi-cli
 sgqlc==16.4
     # via
@@ -207,7 +207,7 @@ six==1.16.0
     # via
     #   -c platform_constraints.txt
     #   python-dateutil
-skill-framework[ui]==0.3.11
+skill-framework[ui]==0.3.12
     # via
     #   -c platform_constraints.txt
     #   -r requirements.in
@@ -243,7 +243,7 @@ typing-extensions==4.12.2
     #   rich-toolkit
     #   typer
     #   uvicorn
-uvicorn[standard]==0.34.3
+uvicorn[standard]==0.35.0
     # via
     #   fastapi
     #   fastapi-cli
