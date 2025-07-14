@@ -2,5 +2,6 @@ data_explorer.py
 dimension_breakout.py
 market_share_analysis.py
 metric_drivers.py
+custom_metric_drivers.py
 trend.py
 forecast_skill.py
