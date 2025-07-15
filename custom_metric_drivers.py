@@ -19,7 +19,7 @@ import json
 logger = logging.getLogger(__name__)
 
 @skill(
-    name="Custom Metric Drivers Analysis",
+    name="Driver Analysis",
     description="Analyzes performance drivers by comparing actual metrics against comparison metrics (like plan, target, or other business metrics). Shows variance, percentage differences, and performance indicators across different dimensions.",
     capabilities="Can compare any metric against another metric (e.g., sales vs sales_plan, volume vs volume_target). Provides variance analysis, percentage differences, and performance breakdowns by dimensions. Supports filtering and custom analysis periods.",
     limitations="Requires both actual and comparison metrics to exist in the dataset. Cannot perform time-based growth analysis (use standard metric drivers for Y/Y or P/P analysis).",
@@ -93,11 +93,11 @@ logger = logging.getLogger(__name__)
 )
 def custom_metric_drivers(parameters: SkillInput):
     """
-    Custom Metric Drivers Analysis skill
+    Driver Analysis skill
     
     Compares actual metrics against comparison metrics in the same period and provides variance analysis.
     """
-    print("DEBUG: Starting custom_metric_drivers skill")
+    print("DEBUG: Starting Driver Analysis skill")
     print(f"DEBUG: Raw parameters received: {parameters.arguments}")
     
     param_dict = {
