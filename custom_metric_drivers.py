@@ -7,7 +7,10 @@ from skill_framework import SkillInput, SkillVisualization, skill, SkillParamete
 from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
+
 from answer_rocket import AnswerRocketClient
+from ar_analytics.defaults import default_table_layout, get_table_layout_vars
+from ar_analytics import ArUtils
 
 import jinja2
 import logging
@@ -31,7 +34,7 @@ logger = logging.getLogger(__name__)
             name="periods",
             constrained_to="date_filter",
             is_multi=True,
-            description="If provided by the user, list time periods in a format 'q2 2023', '2021', 'jan 2023', 'mat nov 2022', 'mat q1 2021', 'ytd q4 2022', 'ytd 2023', 'ytd', 'mat', '<no_period_provided>' or '<since_launch>'. Use knowledge about today's date to handle relative periods and open ended periods."
+            description="If provided by the user, list time periods in a format 'q2 2023', '2021', 'jan 2023', etc."
         ),
         SkillParameter(
             name="metric",
@@ -43,7 +46,7 @@ logger = logging.getLogger(__name__)
         SkillParameter(
             name="comparison_metric",
             is_multi=False,
-            constrained_to="metrics",
+            constrained_to="metrics", 
             description="The metric to compare against (e.g., sales_plan, volume_target, revenue_budget)",
             required=True
         ),
@@ -76,7 +79,7 @@ logger = logging.getLogger(__name__)
         ),
         SkillParameter(
             name="insight_prompt",
-            parameter_type="prompt",
+            parameter_type="prompt", 
             description="Prompt being used for detailed insights.",
             default_value="Analyze the performance data and provide detailed insights about: 1) Overall performance vs target/plan, 2) Key drivers of variance, 3) Best and worst performing segments, 4) Recommendations for improvement. Facts: {facts}"
         ),
@@ -84,450 +87,265 @@ logger = logging.getLogger(__name__)
             name="table_viz_layout",
             parameter_type="visualization",
             description="Table Viz Layout",
-            default_value=json.dumps({
-                "type": "table",
-                "title": "{{ headline }}",
-                "subtitle": "{{ sub_headline }}",
-                "data": "{{ table_data }}",
-                "columns": "{{ columns }}",
-                "styling": {
-                    "variance_column": {
-                        "conditional_formatting": {
-                            "positive": {"color": "green"},
-                            "negative": {"color": "red"}
-                        }
-                    }
-                }
-            })
+            default_value=default_table_layout
         )
     ]
 )
-def custom_metric_drivers(parameters: SkillInput) -> SkillOutput:
+def custom_metric_drivers(parameters: SkillInput):
     """
     Custom Metric Drivers Analysis skill
     
-    Compares actual metrics against comparison metrics (plan, target, budget) and provides
-    variance analysis with performance indicators.
+    Compares actual metrics against comparison metrics in the same period and provides variance analysis.
     """
-    try:
-        print("🔍 DEBUG: Starting custom_metric_drivers skill")
-        print(f"🔍 DEBUG: Raw parameters received: {parameters.arguments}")
-        
-        # Initialize AnswerRocket client
-        arc = AnswerRocketClient()
-        
-        print("🔍 DEBUG: Testing AnswerRocket connection...")
-        if not arc.can_connect():
-            print("❌ DEBUG: AnswerRocket connection failed")
-            logger.error("Failed to connect to AnswerRocket")
-            return SkillOutput(
-                final_prompt="Unable to connect to AnswerRocket. Please check your connection and credentials.",
-                narrative="Connection failed",
-                visualizations=[],
-                export_data=[]
-            )
-        
-        print("✅ DEBUG: AnswerRocket connection successful")
-        
-        # Extract parameters
-        metric = parameters.arguments.metric
-        comparison_metric = parameters.arguments.comparison_metric
-        periods = getattr(parameters.arguments, 'periods', [])
-        breakouts = getattr(parameters.arguments, 'breakouts', [])
-        other_filters = getattr(parameters.arguments, 'other_filters', [])
-        limit_n = getattr(parameters.arguments, 'limit_n', 10)
-        variance_threshold = getattr(parameters.arguments, 'variance_threshold', 10)
-        
-        print(f"🔍 DEBUG: Extracted parameters:")
-        print(f"  - metric: {metric}")
-        print(f"  - comparison_metric: {comparison_metric}")
-        print(f"  - periods: {periods}")
-        print(f"  - breakouts: {breakouts}")
-        print(f"  - other_filters: {other_filters}")
-        print(f"  - limit_n: {limit_n}")
-        print(f"  - variance_threshold: {variance_threshold}")
-        
-        # Build query for AnswerRocket
-        query_parts = [f"show me {metric} and {comparison_metric}"]
-        
-        # Add breakouts
-        if breakouts:
-            breakout_str = ", ".join(breakouts)
-            query_parts.append(f"by {breakout_str}")
-            print(f"🔍 DEBUG: Added breakouts: {breakout_str}")
-        
-        # Add time periods
-        if periods:
-            period_str = ", ".join(periods)
-            query_parts.append(f"for {period_str}")
-            print(f"🔍 DEBUG: Added periods: {period_str}")
-        
-        # Add filters
-        if other_filters:
-            print(f"🔍 DEBUG: Processing {len(other_filters)} filters")
-            for i, filter_item in enumerate(other_filters):
-                if isinstance(filter_item, dict):
-                    dim = filter_item.get('dim', '')
-                    op = filter_item.get('op', '=')
-                    val = filter_item.get('val', '')
-                    query_parts.append(f"where {dim} {op} {val}")
-                    print(f"🔍 DEBUG: Filter {i}: {dim} {op} {val}")
-                else:
-                    print(f"❌ DEBUG: Invalid filter format: {filter_item}")
-        
-        query = " ".join(query_parts)
-        print(f"🔍 DEBUG: Final query: {query}")
-        logger.info(f"Executing query: {query}")
-        
-        # Execute query
-        print("🔍 DEBUG: Executing AnswerRocket query...")
-        result = arc.ask(query)
-        print(f"🔍 DEBUG: Query result type: {type(result)}")
-        print(f"🔍 DEBUG: Query result hasattr data: {hasattr(result, 'data')}")
-        if hasattr(result, 'data'):
-            print(f"🔍 DEBUG: Result data is None: {result.data is None}")
-            if result.data is not None:
-                print(f"🔍 DEBUG: Result data length: {len(result.data)}")
-                print(f"🔍 DEBUG: Result data sample: {result.data[:2] if len(result.data) > 0 else 'EMPTY'}")
-        
-        # Extract data
-        if hasattr(result, 'data') and result.data is not None:
-            df = pd.DataFrame(result.data)
-            print(f"🔍 DEBUG: Created DataFrame with shape: {df.shape}")
-            print(f"🔍 DEBUG: DataFrame columns: {df.columns.tolist()}")
-            print(f"🔍 DEBUG: DataFrame head:\n{df.head()}")
-        else:
-            print("❌ DEBUG: No data returned from AnswerRocket")
-            logger.warning("No data returned from AnswerRocket")
-            return SkillOutput(
-                final_prompt=f"No data found for {metric} vs {comparison_metric}. Please check your parameters.",
-                narrative="No data available",
-                visualizations=[],
-                export_data=[]
-            )
-        
-        if df.empty:
-            print("❌ DEBUG: DataFrame is empty")
-            return SkillOutput(
-                final_prompt=f"No data found for {metric} vs {comparison_metric}. Please check your parameters.",
-                narrative="No data available",
-                visualizations=[],
-                export_data=[]
-            )
-        
-        print(f"🔍 DEBUG: Starting data processing with:")
-        print(f"  - metric: {metric}")
-        print(f"  - comparison_metric: {comparison_metric}")
-        print(f"  - breakouts: {breakouts}")
-        print(f"  - variance_threshold: {variance_threshold}")
-        print(f"  - limit_n: {limit_n}")
-        
-        # Data processing and analysis
-        df = process_comparison_data(df, metric, comparison_metric, breakouts, variance_threshold, limit_n)
-        print(f"🔍 DEBUG: After processing, DataFrame shape: {df.shape}")
-        print(f"🔍 DEBUG: After processing, DataFrame columns: {df.columns.tolist()}")
-        print(f"🔍 DEBUG: After processing, DataFrame head:\n{df.head()}")
-        
-        # Generate insights
-        print(f"🔍 DEBUG: Generating insights...")
-        insights_data = generate_insights(df, metric, comparison_metric, variance_threshold)
-        
-        # Create parameter display descriptions
-        print(f"🔍 DEBUG: Creating parameter display descriptions...")
-        param_info = [
-            ParameterDisplayDescription(key="Primary Metric", value=metric),
-            ParameterDisplayDescription(key="Comparison Metric", value=comparison_metric),
-            ParameterDisplayDescription(key="Variance Threshold", value=f"{variance_threshold}%"),
-            ParameterDisplayDescription(key="Breakout Dimensions", value=", ".join(breakouts) if breakouts else "None"),
-            ParameterDisplayDescription(key="Time Periods", value=", ".join(periods) if periods else "All available")
-        ]
-        
-        # Render layout and create visualizations
-        print(f"🔍 DEBUG: Rendering layout...")
-        viz, insights, final_prompt, export_data = render_comparison_layout(
-            df,
-            f"{metric.title()} vs {comparison_metric.title()}",
-            f"Performance Analysis with {variance_threshold}% Variance Threshold",
-            insights_data,
-            [],  # warnings
-            parameters.arguments.max_prompt,
-            parameters.arguments.insight_prompt,
-            parameters.arguments.table_viz_layout
-        )
-        
-        print(f"🔍 DEBUG: Creating final SkillOutput...")
-        print(f"🔍 DEBUG: - final_prompt length: {len(final_prompt) if final_prompt else 0}")
-        print(f"🔍 DEBUG: - insights length: {len(insights) if insights else 0}")
-        print(f"🔍 DEBUG: - visualizations count: {len(viz)}")
-        print(f"🔍 DEBUG: - export_data count: {len(export_data)}")
-        
-        return SkillOutput(
-            final_prompt=final_prompt,
-            narrative=insights,
-            visualizations=viz,
-            parameter_display_descriptions=param_info,
-            followup_questions=[
-                f"What are the top performing {breakouts[0] if breakouts else 'segments'} vs {comparison_metric}?",
-                f"Show me the variance trends for {metric} vs {comparison_metric}",
-                f"Which factors are driving the {metric} performance gaps?"
-            ],
-            export_data=[ExportData(name=name, data=df_data) for name, df_data in export_data.items()]
-        )
+    print("DEBUG: Starting custom_metric_drivers skill")
+    print(f"DEBUG: Raw parameters received: {parameters.arguments}")
     
-    except Exception as e:
-        logger.error(f"Error in custom_metric_drivers: {str(e)}")
+    param_dict = {
+        "periods": [], 
+        "metric": "", 
+        "comparison_metric": "",
+        "limit_n": 10, 
+        "breakouts": [], 
+        "other_filters": [], 
+        "variance_threshold": 10
+    }
+    
+    # Update param_dict with values from parameters.arguments if they exist
+    for key in param_dict:
+        if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
+            param_dict[key] = getattr(parameters.arguments, key)
+
+    print(f"DEBUG: Processed parameters: {param_dict}")
+
+    env = SimpleNamespace(**param_dict)
+    
+    # Initialize AnswerRocket client
+    arc = AnswerRocketClient()
+    
+    print("DEBUG: Testing AnswerRocket connection...")
+    if not arc.can_connect():
+        print("DEBUG: AnswerRocket connection failed")
         return SkillOutput(
-            final_prompt=f"An error occurred while analyzing {metric} vs {comparison_metric}: {str(e)}",
-            narrative="Error occurred during analysis",
+            final_prompt="Unable to connect to AnswerRocket. Please check your connection and credentials.",
+            narrative="Connection failed",
             visualizations=[],
             export_data=[]
         )
-
-def process_comparison_data(df, metric, comparison_metric, breakouts, variance_threshold, limit_n):
-    """Process the data to calculate variances and performance indicators"""
     
-    print(f"🔍 DEBUG: process_comparison_data called with:")
-    print(f"  - Input DataFrame shape: {df.shape}")
-    print(f"  - metric: {metric}")
-    print(f"  - comparison_metric: {comparison_metric}")
-    print(f"  - breakouts: {breakouts}")
+    print("DEBUG: AnswerRocket connection successful")
+    
+    # Build query for AnswerRocket - comparing different metrics in same period
+    query_parts = [f"show me {env.metric} and {env.comparison_metric}"]
+    
+    # Add breakouts
+    if env.breakouts:
+        breakout_str = ", ".join(env.breakouts)
+        query_parts.append(f"by {breakout_str}")
+        print(f"DEBUG: Added breakouts: {breakout_str}")
+    
+    # Add time periods
+    if env.periods:
+        period_str = ", ".join(env.periods)
+        query_parts.append(f"for {period_str}")
+        print(f"DEBUG: Added periods: {period_str}")
+    
+    # Add filters
+    if env.other_filters:
+        print(f"DEBUG: Processing {len(env.other_filters)} filters")
+        for i, filter_item in enumerate(env.other_filters):
+            if isinstance(filter_item, dict):
+                dim = filter_item.get('dim', '')
+                op = filter_item.get('op', '=')
+                val = filter_item.get('val', '')
+                query_parts.append(f"where {dim} {op} {val}")
+                print(f"DEBUG: Filter {i}: {dim} {op} {val}")
+    
+    query = " ".join(query_parts)
+    print(f"DEBUG: Final query: {query}")
+    
+    # Execute query
+    print("DEBUG: Executing AnswerRocket query...")
+    result = arc.ask(query)
+    
+    # Extract data
+    if hasattr(result, 'data') and result.data is not None:
+        df = pd.DataFrame(result.data)
+        print(f"DEBUG: Created DataFrame with shape: {df.shape}")
+        print(f"DEBUG: DataFrame columns: {df.columns.tolist()}")
+    else:
+        print("DEBUG: No data returned from AnswerRocket")
+        return SkillOutput(
+            final_prompt=f"No data found for {env.metric} vs {env.comparison_metric}. Please check your parameters.",
+            narrative="No data available",
+            visualizations=[],
+            export_data=[]
+        )
+    
+    if df.empty:
+        print("DEBUG: DataFrame is empty")
+        return SkillOutput(
+            final_prompt=f"No data found for {env.metric} vs {env.comparison_metric}. Please check your parameters.",
+            narrative="No data available", 
+            visualizations=[],
+            export_data=[]
+        )
+    
+    # Process the data to add variance calculations - this is the custom logic
+    print(f"DEBUG: Processing data for variance analysis...")
     
     # Check if required columns exist
-    if metric not in df.columns:
-        print(f"❌ DEBUG: Metric '{metric}' not found in columns: {df.columns.tolist()}")
-        raise ValueError(f"Metric '{metric}' not found in data")
+    if env.metric not in df.columns:
+        print(f"DEBUG: Metric '{env.metric}' not found in columns: {df.columns.tolist()}")
+        return SkillOutput(
+            final_prompt=f"Metric '{env.metric}' not found in the data. Available columns: {', '.join(df.columns)}",
+            narrative="Missing metric data",
+            visualizations=[],
+            export_data=[]
+        )
     
-    if comparison_metric not in df.columns:
-        print(f"❌ DEBUG: Comparison metric '{comparison_metric}' not found in columns: {df.columns.tolist()}")
-        raise ValueError(f"Comparison metric '{comparison_metric}' not found in data")
-    
-    print(f"🔍 DEBUG: Both metrics found in DataFrame")
+    if env.comparison_metric not in df.columns:
+        print(f"DEBUG: Comparison metric '{env.comparison_metric}' not found in columns: {df.columns.tolist()}")
+        return SkillOutput(
+            final_prompt=f"Comparison metric '{env.comparison_metric}' not found in the data. Available columns: {', '.join(df.columns)}",
+            narrative="Missing comparison metric data",
+            visualizations=[],
+            export_data=[]
+        )
     
     # Ensure numeric columns
-    print(f"🔍 DEBUG: Converting columns to numeric...")
-    print(f"🔍 DEBUG: {metric} before conversion: {df[metric].dtype}")
-    print(f"🔍 DEBUG: {comparison_metric} before conversion: {df[comparison_metric].dtype}")
+    df[env.metric] = pd.to_numeric(df[env.metric], errors='coerce')
+    df[env.comparison_metric] = pd.to_numeric(df[env.comparison_metric], errors='coerce')
     
-    df[metric] = pd.to_numeric(df[metric], errors='coerce')
-    df[comparison_metric] = pd.to_numeric(df[comparison_metric], errors='coerce')
+    print(f"DEBUG: {env.metric} null values: {df[env.metric].isna().sum()}")
+    print(f"DEBUG: {env.comparison_metric} null values: {df[env.comparison_metric].isna().sum()}")
     
-    print(f"🔍 DEBUG: {metric} after conversion: {df[metric].dtype}")
-    print(f"🔍 DEBUG: {comparison_metric} after conversion: {df[comparison_metric].dtype}")
+    # Calculate variance metrics - comparing same period metrics
+    df['variance'] = df[env.metric] - df[env.comparison_metric]
+    df['variance_pct'] = ((df[env.metric] - df[env.comparison_metric]) / df[env.comparison_metric] * 100).round(2)
+    df['achievement_pct'] = (df[env.metric] / df[env.comparison_metric] * 100).round(1)
     
-    # Check for NaN values
-    metric_nulls = df[metric].isna().sum()
-    comparison_nulls = df[comparison_metric].isna().sum()
-    print(f"🔍 DEBUG: {metric} null values: {metric_nulls}")
-    print(f"🔍 DEBUG: {comparison_metric} null values: {comparison_nulls}")
-    
-    # Calculate variance metrics
-    print(f"🔍 DEBUG: Calculating variance metrics...")
-    df['variance'] = df[metric] - df[comparison_metric]
-    df['variance_pct'] = ((df[metric] - df[comparison_metric]) / df[comparison_metric] * 100).round(2)
-    df['performance_ratio'] = (df[metric] / df[comparison_metric]).round(3)
-    
-    print(f"🔍 DEBUG: Variance stats:")
-    print(f"  - variance min/max: {df['variance'].min():.2f} / {df['variance'].max():.2f}")
-    print(f"  - variance_pct min/max: {df['variance_pct'].min():.2f}% / {df['variance_pct'].max():.2f}%")
+    print(f"DEBUG: Variance stats - min: {df['variance'].min():.2f}, max: {df['variance'].max():.2f}")
+    print(f"DEBUG: Variance pct stats - min: {df['variance_pct'].min():.2f}%, max: {df['variance_pct'].max():.2f}%")
     
     # Performance indicators
-    print(f"🔍 DEBUG: Creating performance flags with threshold: {variance_threshold}%")
     df['performance_flag'] = np.where(
-        df['variance_pct'] > variance_threshold, 'Over Performance',
-        np.where(df['variance_pct'] < -variance_threshold, 'Under Performance', 'On Track')
+        df['variance_pct'] > env.variance_threshold, 'Over Performance',
+        np.where(df['variance_pct'] < -env.variance_threshold, 'Under Performance', 'On Track')
     )
     
-    # Achievement percentage
-    df['achievement_pct'] = (df[metric] / df[comparison_metric] * 100).round(1)
-    
-    print(f"🔍 DEBUG: Performance flag distribution:")
+    print(f"DEBUG: Performance flag distribution:")
     print(df['performance_flag'].value_counts())
     
     # Sort by variance to get top performers and underperformers
-    print(f"🔍 DEBUG: Sorting by variance_pct...")
     df = df.sort_values('variance_pct', ascending=False)
     
     # Limit results if specified
-    if limit_n and len(df) > limit_n:
-        print(f"🔍 DEBUG: Limiting results to top {limit_n} rows (was {len(df)})")
-        df = df.head(limit_n)
+    if env.limit_n and len(df) > env.limit_n:
+        print(f"DEBUG: Limiting results to top {env.limit_n} rows")
+        df = df.head(env.limit_n)
     
-    # Create summary statistics
-    df['abs_variance'] = df['variance'].abs()
+    print(f"DEBUG: Final processed DataFrame shape: {df.shape}")
     
-    print(f"🔍 DEBUG: Final processed DataFrame shape: {df.shape}")
-    print(f"🔍 DEBUG: Final processed DataFrame columns: {df.columns.tolist()}")
+    # Create tables dictionary following metric_drivers.py pattern
+    tables = {"Variance Analysis": df}
     
-    return df
-
-def generate_insights(df, metric, comparison_metric, variance_threshold):
-    """Generate insights about the performance comparison"""
-    
-    print(f"🔍 DEBUG: generate_insights called with DataFrame shape: {df.shape}")
-    
-    insights = {}
-    
-    # Overall performance summary
-    print(f"🔍 DEBUG: Calculating overall performance summary...")
-    total_actual = df[metric].sum()
-    total_plan = df[comparison_metric].sum()
-    overall_variance = total_actual - total_plan
-    overall_variance_pct = (overall_variance / total_plan * 100) if total_plan != 0 else 0
-    
-    print(f"🔍 DEBUG: Overall performance:")
-    print(f"  - total_actual: {total_actual}")
-    print(f"  - total_plan: {total_plan}")
-    print(f"  - overall_variance: {overall_variance}")
-    print(f"  - overall_variance_pct: {overall_variance_pct:.2f}%")
-    
-    insights['overall_performance'] = {
-        'total_actual': total_actual,
-        'total_plan': total_plan,
-        'overall_variance': overall_variance,
-        'overall_variance_pct': round(overall_variance_pct, 2)
-    }
-    
-    # Performance flags summary
-    print(f"🔍 DEBUG: Creating performance summary...")
-    performance_summary = df['performance_flag'].value_counts().to_dict()
-    insights['performance_summary'] = performance_summary
-    print(f"🔍 DEBUG: Performance summary: {performance_summary}")
-    
-    # Best and worst performers
-    if len(df) > 0:
-        print(f"🔍 DEBUG: Identifying best and worst performers...")
-        best_performer = df.iloc[0]
-        worst_performer = df.iloc[-1]
-        
-        print(f"🔍 DEBUG: Best performer columns: {best_performer.index.tolist()}")
-        print(f"🔍 DEBUG: Worst performer columns: {worst_performer.index.tolist()}")
-        
-        # Try to get the first breakout column for name, or use index
-        name_col = df.columns[0] if len(df.columns) > 0 else None
-        
-        insights['best_performer'] = {
-            'name': best_performer.get(name_col, 'Unknown') if name_col else 'Unknown',
-            'variance_pct': best_performer['variance_pct'],
-            'achievement_pct': best_performer['achievement_pct']
-        }
-        
-        insights['worst_performer'] = {
-            'name': worst_performer.get(name_col, 'Unknown') if name_col else 'Unknown',
-            'variance_pct': worst_performer['variance_pct'],
-            'achievement_pct': worst_performer['achievement_pct']
-        }
-        
-        print(f"🔍 DEBUG: Best performer: {insights['best_performer']}")
-        print(f"🔍 DEBUG: Worst performer: {insights['worst_performer']}")
-    
-    # Significant variances
-    print(f"🔍 DEBUG: Calculating significant variances...")
-    significant_variances = df[df['variance_pct'].abs() > variance_threshold]
-    insights['significant_variances'] = len(significant_variances)
-    print(f"🔍 DEBUG: Significant variances count: {len(significant_variances)}")
-    
-    print(f"🔍 DEBUG: Final insights: {insights}")
-    return insights
-
-def render_comparison_layout(df, title, subtitle, insights_data, warnings, max_prompt, insight_prompt, viz_layout):
-    """Render the visualization layout for comparison analysis"""
-    
-    print(f"🔍 DEBUG: render_comparison_layout called with:")
-    print(f"  - title: {title}")
-    print(f"  - subtitle: {subtitle}")
-    print(f"  - insights_data keys: {list(insights_data.keys()) if insights_data else 'None'}")
-    print(f"  - warnings: {warnings}")
-    
-    # Prepare facts for prompts
-    facts = [insights_data]
-    
-    print(f"🔍 DEBUG: Rendering prompts...")
-    insight_template = jinja2.Template(insight_prompt).render(facts=facts)
-    max_response_prompt = jinja2.Template(max_prompt).render(facts=facts)
-    
-    print(f"🔍 DEBUG: Generated insight_template length: {len(insight_template)}")
-    print(f"🔍 DEBUG: Generated max_response_prompt length: {len(max_response_prompt)}")
-    
-    # Generate insights using AR Utils (if available)
-    print(f"🔍 DEBUG: Attempting to generate insights...")
-    try:
-        from ar_analytics import ArUtils
-        ar_utils = ArUtils()
-        insights = ar_utils.get_llm_response(insight_template)
-        print(f"🔍 DEBUG: LLM insights generated successfully, length: {len(insights)}")
-    except ImportError:
-        insights = "Analysis completed. Review the data for performance insights."
-        print(f"🔍 DEBUG: ArUtils not available, using fallback insights")
-    except Exception as e:
-        insights = "Analysis completed. Review the data for performance insights."
-        print(f"🔍 DEBUG: Error generating LLM insights: {e}")
-    
-    # Prepare visualization data
-    viz_list = []
-    export_data = {"Performance Analysis": df}
-    
-    # General variables for layout
-    general_vars = {
-        "headline": title,
-        "sub_headline": subtitle,
-        "hide_growth_warning": len(warnings) == 0,
-        "exec_summary": insights,
-        "warning": warnings
-    }
-    
-    print(f"🔍 DEBUG: General vars: {general_vars}")
-    
-    # Prepare table data
-    print(f"🔍 DEBUG: Preparing table data...")
-    table_data = df.to_dict('records')
-    columns = [
-        {"field": col, "title": col.replace('_', ' ').title()} 
-        for col in df.columns
+    # Create parameter display descriptions
+    param_info = [
+        ParameterDisplayDescription(key="Primary Metric", value=env.metric),
+        ParameterDisplayDescription(key="Comparison Metric", value=env.comparison_metric),
+        ParameterDisplayDescription(key="Variance Threshold", value=f"{env.variance_threshold}%"),
+        ParameterDisplayDescription(key="Breakout Dimensions", value=", ".join(env.breakouts) if env.breakouts else "None")
     ]
     
-    table_vars = {
-        "table_data": table_data,
-        "columns": columns,
-        "total_rows": len(df)
+    # Generate insights facts - summarize variance analysis
+    total_actual = df[env.metric].sum()
+    total_plan = df[env.comparison_metric].sum()
+    overall_variance_pct = ((total_actual - total_plan) / total_plan * 100) if total_plan != 0 else 0
+    
+    insights_dfs = [pd.DataFrame([{
+        'metric': env.metric,
+        'comparison_metric': env.comparison_metric,
+        'total_actual': total_actual,
+        'total_plan': total_plan,
+        'overall_variance_pct': round(overall_variance_pct, 2),
+        'performance_summary': df['performance_flag'].value_counts().to_dict(),
+        'significant_variances': len(df[df['variance_pct'].abs() > env.variance_threshold])
+    }])]
+    
+    print(f"DEBUG: Overall variance: {overall_variance_pct:.2f}%")
+    
+    # Render layout following the same pattern as metric_drivers.py
+    viz, insights, final_prompt, export_data = render_layout(
+        tables,
+        f"{env.metric.title()} vs {env.comparison_metric.title()}",
+        f"Variance Analysis with {env.variance_threshold}% Threshold",
+        insights_dfs,
+        [],  # warnings
+        parameters.arguments.max_prompt,
+        parameters.arguments.insight_prompt,
+        parameters.arguments.table_viz_layout
+    )
+    
+    return SkillOutput(
+        final_prompt=final_prompt,
+        narrative=None,
+        visualizations=viz,
+        parameter_display_descriptions=param_info,
+        followup_questions=[
+            f"What are the top performing {env.breakouts[0] if env.breakouts else 'segments'} vs {env.comparison_metric}?",
+            f"Show me the variance trends for {env.metric} vs {env.comparison_metric}",
+            f"Which factors are driving the {env.metric} performance gaps?"
+        ],
+        export_data=[ExportData(name=name, data=df_data) for name, df_data in export_data.items()]
+    )
+
+def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
+    """Render the visualization layout following the exact same pattern as metric_drivers.py"""
+    
+    print(f"DEBUG: render_layout called with {len(tables)} tables")
+    
+    facts = []
+    for i_df in insights_dfs:
+        facts.append(i_df.to_dict(orient='records'))
+
+    insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
+    max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
+
+    print(f"DEBUG: Generated insight template length: {len(insight_template)}")
+    print(f"DEBUG: Generated max response prompt length: {len(max_response_prompt)}")
+
+    # Generate insights using ArUtils like other skills
+    ar_utils = ArUtils()
+    insights = ar_utils.get_llm_response(insight_template)
+    
+    print(f"DEBUG: LLM insights generated, length: {len(insights)}")
+    
+    viz_list = []
+    export_data = {}
+
+    general_vars = {
+        "headline": title if title else "Total",
+        "sub_headline": subtitle if subtitle else "Variance Analysis", 
+        "hide_growth_warning": False if warnings else True,
+        "exec_summary": insights if insights else "No Insights.",
+        "warning": warnings
     }
-    
-    print(f"🔍 DEBUG: Table vars:")
-    print(f"  - table_data rows: {len(table_data)}")
-    print(f"  - columns count: {len(columns)}")
-    print(f"  - total_rows: {len(df)}")
-    
-    # Wire the layout
-    print(f"🔍 DEBUG: Wiring layout...")
-    try:
-        print(f"🔍 DEBUG: viz_layout type: {type(viz_layout)}")
-        print(f"🔍 DEBUG: viz_layout content: {viz_layout[:200]}...")
-        
+
+    print(f"DEBUG: General vars prepared")
+
+    for name, table in tables.items():
+        export_data[name] = table
+        hide_footer = True
+        table_vars = get_table_layout_vars(table)
+        table_vars["hide_footer"] = hide_footer
         rendered = wire_layout(json.loads(viz_layout), {**general_vars, **table_vars})
-        viz_list.append(SkillVisualization(title="Performance Analysis", layout=rendered))
-        print(f"🔍 DEBUG: Layout wired successfully")
-    except Exception as e:
-        print(f"❌ DEBUG: Error rendering layout: {e}")
-        logger.error(f"Error rendering layout: {e}")
-        # Fallback simple table
-        simple_layout = {
-            "type": "table",
-            "title": title,
-            "data": table_data,
-            "columns": columns
-        }
-        viz_list.append(SkillVisualization(title="Performance Analysis", layout=simple_layout))
-        print(f"🔍 DEBUG: Using fallback layout")
-    
-    print(f"🔍 DEBUG: render_comparison_layout returning:")
-    print(f"  - viz_list count: {len(viz_list)}")
-    print(f"  - insights length: {len(insights)}")
-    print(f"  - max_response_prompt length: {len(max_response_prompt)}")
-    print(f"  - export_data keys: {list(export_data.keys())}")
-    
+        viz_list.append(SkillVisualization(title=name, layout=rendered))
+        print(f"DEBUG: Created visualization for {name}")
+
+    print(f"DEBUG: render_layout returning {len(viz_list)} visualizations")
     return viz_list, insights, max_response_prompt, export_data
 
 if __name__ == '__main__':
-    # Test the skill
     skill_input: SkillInput = custom_metric_drivers.create_input(
         arguments={
             "metric": "sales",
