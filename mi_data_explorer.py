@@ -5,6 +5,43 @@ from data_explorer_helper.data_explorer_config import FINAL_PROMPT_TEMPLATE, DAT
 from data_explorer_helper.data_explorer_functionality import run_data_explorer
 
 
+def is_chart_data_valid(chart_config):
+    """
+    Validate chart data to detect corrupted/placeholder values
+    """
+    if not chart_config or not isinstance(chart_config, dict):
+        return False
+    
+    # Check for series data
+    series = chart_config.get('series', [])
+    if not series:
+        return False
+    
+    # Common placeholder/corrupted values to watch for
+    suspicious_names = [
+        "sample", "chart", "this", "is", "a", "test", "example", 
+        "data", "value", "item", "element", "field", "column"
+    ]
+    
+    for serie in series:
+        if isinstance(serie, dict) and 'data' in serie:
+            data_points = serie['data']
+            if isinstance(data_points, list):
+                # Check for suspicious names in pie chart data
+                for point in data_points:
+                    if isinstance(point, dict) and 'name' in point:
+                        name = str(point['name']).lower().strip()
+                        if any(suspicious in name for suspicious in suspicious_names):
+                            print(f"DEBUG: Found suspicious data point name: '{point['name']}'")
+                            return False
+                        # Check for very generic single-word names
+                        if len(name) <= 2 and name.isalpha():
+                            print(f"DEBUG: Found very short suspicious name: '{point['name']}'")
+                            return False
+    
+    return True
+
+
 @skill(
     name="MI Data Explorer",
     description="A data explorer skill that returns Highcharts visualization format for MetricInsights integration. Extracts chart data and SQL queries.",
@@ -136,21 +173,26 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                         
                         chart_config = find_highcharts_config(layout_data)
                         if chart_config:
-                            chart_data = chart_config
-                            chart_title = chart_config.get('title', {}).get('text', f"Chart for: {user_question}")
-                            
-                            # Determine chart type from config
-                            if chart_config.get('chart', {}).get('type') == 'pie':
-                                chart_type = "PIE_CHART"
-                            elif chart_config.get('chart', {}).get('type') == 'bar':
-                                chart_type = "BAR_CHART"
-                            elif chart_config.get('chart', {}).get('type') == 'column':
-                                chart_type = "COLUMN_CHART"
+                            # Validate chart data before using it
+                            if is_chart_data_valid(chart_config):
+                                chart_data = chart_config
+                                chart_title = chart_config.get('title', {}).get('text', f"Chart for: {user_question}")
+                                
+                                # Determine chart type from config
+                                if chart_config.get('chart', {}).get('type') == 'pie':
+                                    chart_type = "PIE_CHART"
+                                elif chart_config.get('chart', {}).get('type') == 'bar':
+                                    chart_type = "BAR_CHART"
+                                elif chart_config.get('chart', {}).get('type') == 'column':
+                                    chart_type = "COLUMN_CHART"
+                                else:
+                                    chart_type = "LINE_CHART"
+                                
+                                print(f"DEBUG: Extracted valid chart type: {chart_type}")
+                                break
                             else:
-                                chart_type = "LINE_CHART"
-                            
-                            print(f"DEBUG: Extracted chart type: {chart_type}")
-                            break
+                                print(f"DEBUG: Chart data validation failed for viz {i} - contains corrupted/placeholder data")
+                                # Continue to next visualization or fall back to no chart
                         else:
                             print(f"DEBUG: No HighchartsChart found in layout {i}")
                             
@@ -269,17 +311,43 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
         }
         
     else:
-        # No chart case
-        message = f"No chart visualization available for: {user_question}"
+        # No chart case - could be due to validation failure or no visualizations
+        if hasattr(result, 'visualizations') and result.visualizations:
+            message = f"Chart visualization contained invalid data for: {user_question}. This may be due to insufficient data or visualization generation errors."
+            chart_title = "Chart Data Validation Failed"
+            chart_type = "INVALID_CHART"
+        else:
+            message = f"No chart visualization available for: {user_question}"
+            chart_title = "No Chart Available"
+            chart_type = "EMPTY_CHART"
+        
+        # Still extract SQL for debugging purposes
+        sql_query = ""
+        if hasattr(result, 'final_prompt') and result.final_prompt:
+            final_prompt = result.final_prompt
+            import re
+            sql_patterns = [
+                r'"text":\s*"```sql\\n(.*?)\\n```"',
+                r'"text":\s*"```sql\\n(.*?)"',
+                r'(SELECT.*?LIMIT.*?)(?=")',
+                r'(SELECT.*?)(?=")',
+            ]
+            
+            for pattern in sql_patterns:
+                matches = re.findall(pattern, final_prompt, re.DOTALL | re.IGNORECASE)
+                if matches:
+                    sql_query = matches[0].strip()
+                    break
+        
         chart_structure = {
             "data_type": "hchart", 
             "data": {
-                "chart_type": "EMPTY_CHART",
+                "chart_type": chart_type,
                 "highChartsOptions": "{}",
-                "title": "No Chart Available",
+                "title": chart_title,
                 "type": "chart"
             },
-            "sql": ""
+            "sql": sql_query
         }
     
     # Convert chart structure to JSON string
