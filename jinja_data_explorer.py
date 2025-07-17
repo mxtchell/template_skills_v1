@@ -69,7 +69,8 @@ def jinja_data_explorer(parameters: SkillInput) -> SkillOutput:
         error_table = {
             "data_type": "table",
             "data": [],
-            "columns": []
+            "columns": [],
+            "sql": ""
         }
         
         template_str = parameters.arguments.final_prompt_template
@@ -117,10 +118,36 @@ def jinja_data_explorer(parameters: SkillInput) -> SkillOutput:
                 "label": col.replace('_', ' ').title()
             })
         
+        # Get the SQL query from the result if available
+        sql_query = ""
+        
+        # Try multiple ways to get the SQL query
+        if hasattr(result, 'parameter_display_descriptions') and result.parameter_display_descriptions:
+            for desc in result.parameter_display_descriptions:
+                if isinstance(desc, str) and ('sql' in desc.lower() or 'select' in desc.lower()):
+                    sql_query = desc
+                    break
+                elif hasattr(desc, 'value') and isinstance(desc.value, str):
+                    if 'sql' in desc.value.lower() or 'select' in desc.value.lower():
+                        sql_query = desc.value
+                        break
+        
+        # Also try to get from export_data metadata
+        if not sql_query and result.export_data and len(result.export_data) > 0:
+            first_export = result.export_data[0]
+            if hasattr(first_export, 'sql') and first_export.sql:
+                sql_query = first_export.sql
+            elif hasattr(first_export, 'metadata') and first_export.metadata:
+                if 'sql' in first_export.metadata:
+                    sql_query = first_export.metadata['sql']
+        
+        print(f"DEBUG: Found SQL query: {sql_query[:100] if sql_query else 'None'}...")
+        
         table_structure = {
             "data_type": "table",
             "data": table_data,
-            "columns": columns
+            "columns": columns,
+            "sql": sql_query
         }
         
     else:
@@ -129,7 +156,8 @@ def jinja_data_explorer(parameters: SkillInput) -> SkillOutput:
         table_structure = {
             "data_type": "table",
             "data": [],
-            "columns": []
+            "columns": [],
+            "sql": ""
         }
     
     # Convert table structure to JSON string (the "table" field content)
