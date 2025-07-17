@@ -147,6 +147,20 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
             print(f"DEBUG: Found {len(result.visualizations)} visualizations")
             for i, viz in enumerate(result.visualizations):
                 print(f"DEBUG: Viz {i} has layout_variables: {hasattr(viz, 'layout_variables')}")
+                print(f"DEBUG: Viz {i} attributes: {[attr for attr in dir(viz) if not attr.startswith('_')]}")
+                print(f"DEBUG: Viz {i} type: {type(viz)}")
+                
+                # Check if there's a layout or template attribute
+                if hasattr(viz, 'layout'):
+                    print(f"DEBUG: Viz {i} has layout: {type(viz.layout)}")
+                    if isinstance(viz.layout, str) and ('```sql' in viz.layout or 'SELECT' in viz.layout.upper()):
+                        print(f"DEBUG: FOUND SQL in viz.layout!")
+                        import re
+                        match = re.search(r'```sql\n(.*?)```', viz.layout, re.DOTALL)
+                        if match:
+                            sql_query = match.group(1).strip()
+                            break
+                
                 if hasattr(viz, 'layout_variables') and viz.layout_variables:
                     print(f"DEBUG: Viz {i} layout_variables keys: {list(viz.layout_variables.keys())}")
                     # Check all layout variables for SQL content
