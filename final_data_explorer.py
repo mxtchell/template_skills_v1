@@ -155,10 +155,24 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
                     print(f"DEBUG: Viz {i} has layout: {type(viz.layout)}")
                     if isinstance(viz.layout, str) and ('```sql' in viz.layout or 'SELECT' in viz.layout.upper()):
                         print(f"DEBUG: FOUND SQL in viz.layout!")
+                        print(f"DEBUG: Layout snippet: {viz.layout[:500]}...")
                         import re
-                        match = re.search(r'```sql\n(.*?)```', viz.layout, re.DOTALL)
-                        if match:
-                            sql_query = match.group(1).strip()
+                        # Try multiple regex patterns
+                        patterns = [
+                            r'```sql\n(.*?)\n```',
+                            r'```sql\\n(.*?)\\n```',
+                            r'"text":\s*"```sql\\n(.*?)\\n```"',
+                            r'SELECT.*?(?=\\n|"|$)',
+                        ]
+                        
+                        for pattern in patterns:
+                            match = re.search(pattern, viz.layout, re.DOTALL | re.IGNORECASE)
+                            if match:
+                                sql_query = match.group(1).strip()
+                                print(f"DEBUG: Extracted SQL with pattern '{pattern}': {sql_query[:100]}...")
+                                break
+                        
+                        if sql_query:
                             break
                 
                 if hasattr(viz, 'layout_variables') and viz.layout_variables:
