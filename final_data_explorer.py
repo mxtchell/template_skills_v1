@@ -146,15 +146,25 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
         if not sql_query and hasattr(result, 'visualizations') and result.visualizations:
             for viz in result.visualizations:
                 if hasattr(viz, 'layout_variables') and viz.layout_variables:
-                    if 'sql_text' in viz.layout_variables:
-                        sql_text = viz.layout_variables['sql_text']
-                        # Remove markdown formatting: ```sql\n ... \n```
-                        if sql_text.startswith('```sql\n'):
-                            sql_query = sql_text[7:]  # Remove ```sql\n
-                            if sql_query.endswith('\n```'):
-                                sql_query = sql_query[:-4]  # Remove \n```
-                        else:
-                            sql_query = sql_text
+                    # Check all layout variables for SQL content
+                    for key, value in viz.layout_variables.items():
+                        if isinstance(value, str) and ('```sql' in value or 'SELECT' in value.upper()):
+                            sql_text = value
+                            # Remove markdown formatting: ```sql\n ... \n```
+                            if sql_text.startswith('```sql\n'):
+                                sql_query = sql_text[7:]  # Remove ```sql\n
+                                if sql_query.endswith('\n```'):
+                                    sql_query = sql_query[:-4]  # Remove \n```
+                            elif '```sql' in sql_text:
+                                # Handle other markdown formats
+                                import re
+                                match = re.search(r'```sql\n(.*?)```', sql_text, re.DOTALL)
+                                if match:
+                                    sql_query = match.group(1).strip()
+                            else:
+                                sql_query = sql_text
+                            break
+                    if sql_query:
                         break
         
         # Method 3: Try to extract from export_data metadata
