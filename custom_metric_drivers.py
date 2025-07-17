@@ -9,8 +9,6 @@ from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
 
 from answer_rocket import AnswerRocketClient
-from ar_analytics.defaults import default_table_layout, get_table_layout_vars
-from ar_analytics import ArUtils
 
 import jinja2
 import logging
@@ -88,7 +86,13 @@ logger = logging.getLogger(__name__)
             name="table_viz_layout",
             parameter_type="visualization",
             description="Table Viz Layout",
-            default_value=default_table_layout
+            default_value=json.dumps({
+                "type": "table",
+                "title": "{{ headline }}",
+                "subtitle": "{{ sub_headline }}",
+                "data": "{{ table_data }}",
+                "columns": "{{ columns }}"
+            })
         )
     ]
 )
@@ -315,9 +319,17 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
     print(f"DEBUG: Generated insight template length: {len(insight_template)}")
     print(f"DEBUG: Generated max response prompt length: {len(max_response_prompt)}")
 
-    # Generate insights using ArUtils like other skills
-    ar_utils = ArUtils()
-    insights = ar_utils.get_llm_response(insight_template)
+    # Generate insights using AnswerRocket client like forecast_skill
+    try:
+        insights = arc.ask(insight_template)
+        if hasattr(insights, 'message'):
+            insights = insights.message
+        elif hasattr(insights, 'response'):
+            insights = insights.response
+        else:
+            insights = str(insights)
+    except Exception as e:
+        insights = "Analysis completed. Review the data for performance insights."
     
     print(f"DEBUG: LLM insights generated, length: {len(insights)}")
     

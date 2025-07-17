@@ -6,3 +6,4 @@ custom_metric_drivers.py
 advanced_drivers.py
 trend.py
 forecast_skill.py
+metricinsights_data_explorer.py
