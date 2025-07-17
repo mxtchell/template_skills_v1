@@ -157,12 +157,13 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
                         print(f"DEBUG: FOUND SQL in viz.layout!")
                         print(f"DEBUG: Layout snippet: {viz.layout[:500]}...")
                         import re
-                        # Try multiple regex patterns
+                        # Try multiple regex patterns based on the JSON structure we see
                         patterns = [
-                            r'```sql\n(.*?)\n```',
+                            r'"text":\s*"```sql\\n(.*?)\\n```"',  # Most likely format
                             r'```sql\\n(.*?)\\n```',
-                            r'"text":\s*"```sql\\n(.*?)\\n```"',
-                            r'SELECT.*?(?=\\n|"|$)',
+                            r'```sql\n(.*?)\n```',
+                            r'"text":\s*"(SELECT.*?)"',  # Direct SELECT in text field
+                            r'(SELECT.*?)(?=\\n)',  # SELECT until newline
                         ]
                         
                         for pattern in patterns:
