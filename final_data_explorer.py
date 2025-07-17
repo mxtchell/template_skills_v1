@@ -144,11 +144,16 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
         
         # Method 2: Try to get SQL from visualizations layout variables
         if not sql_query and hasattr(result, 'visualizations') and result.visualizations:
-            for viz in result.visualizations:
+            print(f"DEBUG: Found {len(result.visualizations)} visualizations")
+            for i, viz in enumerate(result.visualizations):
+                print(f"DEBUG: Viz {i} has layout_variables: {hasattr(viz, 'layout_variables')}")
                 if hasattr(viz, 'layout_variables') and viz.layout_variables:
+                    print(f"DEBUG: Viz {i} layout_variables keys: {list(viz.layout_variables.keys())}")
                     # Check all layout variables for SQL content
                     for key, value in viz.layout_variables.items():
+                        print(f"DEBUG: Checking key '{key}': {type(value)} - {str(value)[:100]}...")
                         if isinstance(value, str) and ('```sql' in value or 'SELECT' in value.upper()):
+                            print(f"DEBUG: FOUND SQL in key '{key}'!")
                             sql_text = value
                             # Remove markdown formatting: ```sql\n ... \n```
                             if sql_text.startswith('```sql\n'):
