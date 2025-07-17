@@ -42,6 +42,109 @@ def is_chart_data_valid(chart_config):
     return True
 
 
+def should_create_pie_chart(user_question, dataframe):
+    """
+    Detect if this query should generate a pie chart based on question and data structure
+    """
+    if dataframe is None or dataframe.empty:
+        return False
+    
+    # Check if question contains pie chart keywords
+    pie_keywords = [
+        'percentage', 'percent', '%', 'share', 'distribution', 'breakdown', 
+        'composition', 'proportion', 'split', 'pie', 'comes from each'
+    ]
+    
+    question_lower = user_question.lower()
+    has_pie_keywords = any(keyword in question_lower for keyword in pie_keywords)
+    
+    # Check if data structure is suitable for pie chart
+    # Should have exactly 2 columns: one category, one metric
+    if len(dataframe.columns) != 2:
+        return False
+    
+    # Check column types - first should be categorical, second should be numeric
+    first_col = dataframe.columns[0]
+    second_col = dataframe.columns[1]
+    
+    # Check if second column contains percentage/share data
+    second_col_lower = second_col.lower()
+    has_percentage_column = any(keyword in second_col_lower for keyword in ['%', 'percent', 'share'])
+    
+    # Check if first column has reasonable number of categories for pie chart (2-15)
+    unique_categories = dataframe[first_col].nunique()
+    reasonable_categories = 2 <= unique_categories <= 15
+    
+    print(f"DEBUG: Pie chart detection - keywords: {has_pie_keywords}, percentage col: {has_percentage_column}, categories: {unique_categories}")
+    
+    return has_pie_keywords and reasonable_categories
+
+
+def create_pie_chart_config(dataframe, user_question):
+    """
+    Manually create a Highcharts pie chart configuration from DataFrame
+    """
+    if dataframe is None or dataframe.empty or len(dataframe.columns) != 2:
+        return None
+    
+    category_col = dataframe.columns[0]
+    value_col = dataframe.columns[1]
+    
+    # Create pie chart data points
+    data_points = []
+    for _, row in dataframe.iterrows():
+        data_points.append({
+            "name": str(row[category_col]),
+            "y": float(row[value_col])
+        })
+    
+    # Create Highcharts pie chart configuration
+    chart_config = {
+        "chart": {
+            "type": "pie",
+            "height": 400
+        },
+        "title": {
+            "text": f"Distribution by {category_col}",
+            "style": {
+                "fontSize": "18px",
+                "fontWeight": "bold"
+            }
+        },
+        "plotOptions": {
+            "pie": {
+                "allowPointSelect": True,
+                "cursor": "pointer",
+                "dataLabels": {
+                    "enabled": True,
+                    "format": "{point.name}: {point.percentage:.1f}%",
+                    "style": {
+                        "color": "#000000",
+                        "fontWeight": "bold"
+                    }
+                }
+            }
+        },
+        "series": [{
+            "name": value_col,
+            "data": data_points,
+            "colorByPoint": True
+        }],
+        "legend": {
+            "enabled": True,
+            "align": "center",
+            "verticalAlign": "bottom",
+            "layout": "horizontal"
+        },
+        "tooltip": {
+            "pointFormat": "{series.name}: <b>{point.percentage:.1f}%</b>"
+        }
+    }
+    
+    print(f"DEBUG: Created pie chart config with {len(data_points)} data points")
+    return chart_config
+
+
 @skill(
     name="MI Data Explorer",
     description="A data explorer skill that returns Highcharts visualization format for MetricInsights integration. Extracts chart data and SQL queries.",
@@ -313,6 +416,81 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
     else:
         # No chart case - could be due to validation failure or no visualizations
         if hasattr(result, 'visualizations') and result.visualizations:
+            # Try to create pie chart fallback from real data
+            dataframe = None
+            if result.export_data and len(result.export_data) > 0:
+                first_export = result.export_data[0]
+                dataframe = first_export.data
+                print(f"DEBUG: Attempting pie chart fallback with DataFrame shape: {dataframe.shape}")
+            
+            # Check if this should be a pie chart and we have valid data
+            if dataframe is not None and should_create_pie_chart(user_question, dataframe):
+                print("DEBUG: Creating fallback pie chart from real data")
+                pie_chart_config = create_pie_chart_config(dataframe, user_question)
+                if pie_chart_config:
+                    chart_data = pie_chart_config
+                    chart_title = pie_chart_config.get('title', {}).get('text', f"Distribution for: {user_question}")
+                    chart_type = "PIE_CHART"
+                    message = f"Generated pie chart visualization for: {user_question}"
+                    
+                    # Continue with the normal flow (extract SQL, create structure)
+                    sql_query = ""
+                    if hasattr(result, 'final_prompt') and result.final_prompt:
+                        final_prompt = result.final_prompt
+                        import re
+                        sql_patterns = [
+                            r'"text":\s*"```sql\\n(.*?)\\n```"',
+                            r'"text":\s*"```sql\\n(.*?)"',
+                            r'(SELECT.*?LIMIT.*?)(?=")',
+                            r'(SELECT.*?)(?=")',
+                        ]
+                        
+                        for pattern in sql_patterns:
+                            matches = re.findall(pattern, final_prompt, re.DOTALL | re.IGNORECASE)
+                            if matches:
+                                sql_query = matches[0].strip()
+                                break
+                    
+                    print(f"DEBUG: Pie chart fallback successful with SQL: {sql_query[:100] if sql_query else 'None'}...")
+                    
+                    # Create chart structure and skip to the end
+                    chart_structure = {
+                        "data_type": "hchart",
+                        "data": {
+                            "chart_type": chart_type,
+                            "highChartsOptions": json.dumps(chart_data) if chart_data else "{}",
+                            "title": chart_title,
+                            "type": "chart"
+                        },
+                        "sql": sql_query
+                    }
+                    
+                    # Convert chart structure to JSON string
+                    json_chart = json.dumps(chart_structure, indent=2)
+                    
+                    print(f"DEBUG: Created pie chart fallback response with:")
+                    print(f"  - message length: {len(message)}")
+                    print(f"  - chart type: {chart_structure['data']['chart_type']}")
+                    print(f"  - has chart data: {bool(chart_data)}")
+                    
+                    # Use Jinja template for final output
+                    template_str = parameters.arguments.final_prompt_template
+                    template = Template(template_str)
+                    final_output = template.render(
+                        message=message,
+                        json_table=json_chart
+                    )
+                    
+                    return SkillOutput(
+                        final_prompt=final_output,
+                        narrative=message,
+                        visualizations=result.visualizations,
+                        export_data=result.export_data,
+                        parameter_display_descriptions=result.parameter_display_descriptions if hasattr(result, 'parameter_display_descriptions') else [],
+                        followup_questions=result.followup_questions if hasattr(result, 'followup_questions') else []
+                    )
+            
+            # If pie chart fallback didn't work, fall back to invalid chart
             message = f"Chart visualization contained invalid data for: {user_question}. This may be due to insufficient data or visualization generation errors."
             chart_title = "Chart Data Validation Failed"
             chart_type = "INVALID_CHART"
