@@ -159,11 +159,12 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
                         import re
                         # Try multiple regex patterns based on the JSON structure we see
                         patterns = [
-                            r'"text":\s*"```sql\\n(.*?)\\n```"',  # Most likely format
+                            r'"text":\s*"```sql\\n(.*?)\\n```"',  # Most likely format - full SQL block
+                            r'"text":\s*"```sql\\n(.*?)"',  # SQL block without closing ```
+                            r'(SELECT.*?LIMIT.*?)(?=")',  # Complete SELECT statement until LIMIT and quote
+                            r'(SELECT.*?)(?=")',  # SELECT until closing quote
                             r'```sql\\n(.*?)\\n```',
                             r'```sql\n(.*?)\n```',
-                            r'"text":\s*"(SELECT.*?)"',  # Direct SELECT in text field
-                            r'(SELECT.*?)(?=\\n)',  # SELECT until newline
                         ]
                         
                         for pattern in patterns:
