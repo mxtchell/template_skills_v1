@@ -54,6 +54,9 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
     print(f"DEBUG: Parameters: {parameters.arguments}")
     print(f"DEBUG: Template: {parameters.arguments.final_prompt_template}")
     
+    # Add more detailed debugging for result object structure
+    print("DEBUG: Inspecting result object structure...")
+    
     # Call the original data explorer functionality
     try:
         result = run_data_explorer(parameters)
@@ -121,8 +124,26 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
         # Get the SQL query from the result if available
         sql_query = ""
         
-        # Method 1: Try to get SQL from visualizations layout variables
-        if hasattr(result, 'visualizations') and result.visualizations:
+        # Method 1: Extract SQL from final_prompt (most reliable)
+        if hasattr(result, 'final_prompt') and result.final_prompt:
+            final_prompt = result.final_prompt
+            # Look for SQL in markdown code blocks
+            import re
+            sql_patterns = [
+                r'```sql\n(.*?)\n```',  # Standard SQL markdown block
+                r'```SQL\n(.*?)\n```',  # Uppercase SQL block
+                r'The following SQL query was executed:\s*(.*?)\n\n',  # Common pattern
+                r'SQL:\s*(SELECT.*?)(?:\n\n|\Z)',  # SQL: followed by SELECT
+            ]
+            
+            for pattern in sql_patterns:
+                matches = re.findall(pattern, final_prompt, re.DOTALL | re.IGNORECASE)
+                if matches:
+                    sql_query = matches[0].strip()
+                    break
+        
+        # Method 2: Try to get SQL from visualizations layout variables
+        if not sql_query and hasattr(result, 'visualizations') and result.visualizations:
             for viz in result.visualizations:
                 if hasattr(viz, 'layout_variables') and viz.layout_variables:
                     if 'sql_text' in viz.layout_variables:
@@ -136,7 +157,7 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
                             sql_query = sql_text
                         break
         
-        # Method 2: Try to extract from export_data metadata
+        # Method 3: Try to extract from export_data metadata
         if not sql_query and result.export_data and len(result.export_data) > 0:
             first_export = result.export_data[0]
             if hasattr(first_export, 'sql') and first_export.sql:
@@ -144,17 +165,6 @@ def final_data_explorer(parameters: SkillInput) -> SkillOutput:
             elif hasattr(first_export, 'metadata') and first_export.metadata:
                 if 'sql' in first_export.metadata:
                     sql_query = first_export.metadata['sql']
-        
-        # Method 3: Try to get from parameter_display_descriptions
-        if not sql_query and hasattr(result, 'parameter_display_descriptions') and result.parameter_display_descriptions:
-            for desc in result.parameter_display_descriptions:
-                if isinstance(desc, str) and ('select' in desc.lower() or 'from' in desc.lower()):
-                    sql_query = desc
-                    break
-                elif hasattr(desc, 'value') and isinstance(desc.value, str):
-                    if 'select' in desc.value.lower() or 'from' in desc.value.lower():
-                        sql_query = desc.value
-                        break
         
         print(f"DEBUG: Found SQL query: {sql_query[:100] if sql_query else 'None'}...")
         
