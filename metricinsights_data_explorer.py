@@ -1,4 +1,5 @@
 import json
+from jinja2 import Template
 from skill_framework import preview_skill, skill, SkillParameter, SkillInput, SkillOutput
 from data_explorer_helper.data_explorer_config import FINAL_PROMPT_TEMPLATE, DATA_EXPLORE_LAYOUT, SQL_ERROR_FINAL_PROMPT_TEMPLATE, SQL_SUCCESS_EMPTY_DATA_FINAL_PROMPT
 from data_explorer_helper.data_explorer_functionality import run_data_explorer
@@ -18,8 +19,8 @@ from data_explorer_helper.data_explorer_functionality import run_data_explorer
         SkillParameter(
             name="final_prompt_template",
             parameter_type="prompt",
-            description="The prompt template used for Max's response when the SQL service executes successfully",
-            default_value=FINAL_PROMPT_TEMPLATE
+            description="The prompt template used for MetricInsights response format",
+            default_value="{{ message }}\n\n%BEGIN_JSON%\n{{ json_table }}\n%END_JSON%"
         ),
         SkillParameter(
             name="sql_error_final_prompt_template",
@@ -62,18 +63,23 @@ def metricinsights_data_explorer(parameters: SkillInput) -> SkillOutput:
             print(f"DEBUG: Export data count: {len(result.export_data)}")
     except Exception as e:
         print(f"DEBUG: Error in run_data_explorer: {e}")
-        # Return error in JSON format
-        error_response = {
-            "message": f"Error executing query: {str(e)}",
-            "table": {
-                "data_type": "table",
-                "data": [],
-                "columns": []
-            }
+        # Return error using template format
+        error_message = f"Error executing query: {str(e)}"
+        error_table = {
+            "data_type": "table",
+            "data": [],
+            "columns": []
         }
         
+        template_str = parameters.arguments.final_prompt_template
+        template = Template(template_str)
+        final_output = template.render(
+            message=error_message,
+            json_table=json.dumps(error_table, indent=2)
+        )
+        
         return SkillOutput(
-            final_prompt=json.dumps(error_response, indent=2),
+            final_prompt=final_output,
             narrative="Error occurred during data exploration",
             visualizations=result.visualizations if 'result' in locals() else [],
             export_data=result.export_data if 'result' in locals() else []
@@ -125,25 +131,27 @@ def metricinsights_data_explorer(parameters: SkillInput) -> SkillOutput:
             "columns": []
         }
     
-    # Create the final JSON response
-    json_response = {
-        "message": message,
-        "table": table_structure
-    }
+    # Convert table structure to JSON string
+    json_table = json.dumps(table_structure, indent=2)
     
-    print(f"DEBUG: Created JSON response with:")
-    print(f"  - message length: {len(json_response['message'])}")
-    print(f"  - table rows: {len(json_response['table']['data'])}")
-    print(f"  - table columns: {len(json_response['table']['columns'])}")
+    print(f"DEBUG: Created response with:")
+    print(f"  - message length: {len(message)}")
+    print(f"  - table rows: {len(table_structure['data'])}")
+    print(f"  - table columns: {len(table_structure['columns'])}")
     
-    # Convert to JSON string for final_prompt
-    json_string = json.dumps(json_response, indent=2)
+    # Use Jinja template for final output
+    template_str = parameters.arguments.final_prompt_template
+    template = Template(template_str)
+    final_output = template.render(
+        message=message,
+        json_table=json_table
+    )
     
-    print(f"DEBUG: JSON string length: {len(json_string)}")
+    print(f"DEBUG: Final output length: {len(final_output)}")
     
-    # Return the JSON as the final prompt
+    # Return the templated output
     return SkillOutput(
-        final_prompt=json_string,
+        final_prompt=final_output,
         narrative=message,
         visualizations=result.visualizations,
         export_data=result.export_data,
