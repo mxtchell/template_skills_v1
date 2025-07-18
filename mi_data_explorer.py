@@ -20,7 +20,7 @@ from data_explorer_helper.data_explorer_functionality import run_data_explorer
             name="final_prompt_template",
             parameter_type="prompt",
             description="Jinja template for response format. Available variables: message, json_table",
-            default_value="{{ message }}\\n\\n%BEGIN_JSON%\\n{{ json_table }}\\n%END_JSON%"
+            default_value="{{ message }}\n\n%BEGIN_JSON%\n{{ json_table }}\n%END_JSON%"
         ),
         SkillParameter(
             name="sql_error_final_prompt_template",
