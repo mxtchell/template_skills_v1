@@ -231,8 +231,10 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
         }
         chart_message = "No chart visualization available"
     
-    # Extract SQL query
+    # Extract SQL query - try multiple sources
     sql_query = ""
+    
+    # Method 1: Extract from final_prompt
     if hasattr(result, 'final_prompt') and result.final_prompt:
         final_prompt = result.final_prompt
         import re
@@ -248,6 +250,45 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
             if matches:
                 sql_query = matches[0].strip()
                 break
+    
+    # Method 2: Extract from visualizations layout (most reliable)
+    if not sql_query and hasattr(result, 'visualizations') and result.visualizations:
+        for i, viz in enumerate(result.visualizations):
+            if hasattr(viz, 'layout') and isinstance(viz.layout, str):
+                try:
+                    import json
+                    layout_data = json.loads(viz.layout)
+                    # Look for SQL in layout text elements
+                    import re
+                    sql_patterns = [
+                        r'"text":\s*"```sql\\\\n(.*?)\\\\n```"',  # Most common format
+                        r'"text":\s*"```sql\\\\n(.*?)"',  # SQL block without closing
+                        r'(SELECT.*?LIMIT.*?)(?=")',  # Complete SELECT with LIMIT
+                        r'(SELECT.*?)(?=")',  # Any SELECT statement
+                    ]
+                    
+                    for pattern in sql_patterns:
+                        matches = re.findall(pattern, viz.layout, re.DOTALL | re.IGNORECASE)
+                        if matches:
+                            sql_query = matches[0].strip()
+                            # Clean up escaped characters
+                            sql_query = sql_query.replace('\\n', '\n').replace('\\"', '"')
+                            break
+                    
+                    if sql_query:
+                        break
+                        
+                except json.JSONDecodeError:
+                    continue
+    
+    # Method 3: Extract from export_data metadata
+    if not sql_query and result.export_data and len(result.export_data) > 0:
+        first_export = result.export_data[0]
+        if hasattr(first_export, 'sql') and first_export.sql:
+            sql_query = first_export.sql
+        elif hasattr(first_export, 'metadata') and first_export.metadata:
+            if 'sql' in first_export.metadata:
+                sql_query = first_export.metadata['sql']
     
     print(f"DEBUG: Found SQL query: {sql_query[:100] if sql_query else 'None'}...")
     
