@@ -19,8 +19,8 @@ from data_explorer_helper.data_explorer_functionality import run_data_explorer
         SkillParameter(
             name="final_prompt_template",
             parameter_type="prompt",
-            description="Jinja template for response format. Available variables: message, json_table",
-            default_value="{{ message }}\n\n%BEGIN_JSON%\n{{ json_table }}\n%END_JSON%"
+            description="Jinja template for response format. Available variables: message, json_chart, json_table",
+            default_value="{{ message }}\n\n%BEGIN_JSON%\n{{ json_chart }}\n%END_JSON%\n\n%BEGIN_JSON%\n{{ json_table }}\n%END_JSON%"
         ),
         SkillParameter(
             name="sql_error_final_prompt_template",
@@ -66,21 +66,21 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
         # Return error using combined format
         error_message = f"Error executing query: {str(e)}"
         
-        error_response = {
-            "chart": {
-                "data_type": "hchart",
-                "data": {
-                    "chart_type": "ERROR_CHART",
-                    "highChartsOptions": "{}",
-                    "title": "Error Generating Chart",
-                    "type": "chart"
-                }
+        error_chart = {
+            "data_type": "hchart",
+            "data": {
+                "chart_type": "ERROR_CHART",
+                "highChartsOptions": "{}",
+                "title": "Error Generating Chart",
+                "type": "chart"
             },
-            "table": {
-                "data_type": "table",
-                "data": [],
-                "columns": []
-            },
+            "sql": ""
+        }
+        
+        error_table = {
+            "data_type": "table",
+            "data": [],
+            "columns": [],
             "sql": ""
         }
         
@@ -88,7 +88,8 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
         template = Template(template_str)
         final_output = template.render(
             message=error_message,
-            json_table=json.dumps(error_response, indent=2)
+            json_chart=json.dumps(error_chart, indent=2),
+            json_table=json.dumps(error_table, indent=2)
         )
         
         return SkillOutput(
@@ -292,25 +293,40 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
     
     print(f"DEBUG: Found SQL query: {sql_query[:100] if sql_query else 'None'}...")
     
-    # Create combined response structure
-    combined_structure = {
-        "chart": chart_structure,
-        "table": table_structure,
+    # Create separate JSON responses for chart and table
+    chart_response = {
+        "data_type": "hchart",
+        "data": {
+            "chart_type": chart_structure["data"]["chart_type"],
+            "highChartsOptions": chart_structure["data"]["highChartsOptions"],
+            "title": chart_structure["data"]["title"],
+            "type": "chart"
+        },
         "sql": sql_query
     }
     
-    json_response = json.dumps(combined_structure, indent=2)
+    table_response = {
+        "data_type": "table",
+        "data": table_structure["data"],
+        "columns": table_structure["columns"],
+        "sql": sql_query
+    }
+    
+    json_chart = json.dumps(chart_response, indent=2)
+    json_table = json.dumps(table_response, indent=2)
     message = f"{chart_message} and {table_message} for: {user_question}"
     
-    print(f"DEBUG: Created combined response with chart and table data")
-    print(f"DEBUG: Response length: {len(json_response)}")
+    print(f"DEBUG: Created separate chart and table JSON responses")
+    print(f"DEBUG: Chart response length: {len(json_chart)}")
+    print(f"DEBUG: Table response length: {len(json_table)}")
     
     # Use Jinja template for final output
     template_str = parameters.arguments.final_prompt_template
     template = Template(template_str)
     final_output = template.render(
         message=message,
-        json_table=json_response
+        json_chart=json_chart,
+        json_table=json_table
     )
     
     print(f"DEBUG: Final output length: {len(final_output)}")
