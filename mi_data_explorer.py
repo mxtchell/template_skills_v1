@@ -300,27 +300,51 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                 try:
                     import json
                     layout_data = json.loads(viz.layout)
-                    # Look for SQL in layout text elements
-                    import re
-                    sql_patterns = [
-                        r'"text":\s*"```sql\\\\n(.*?)\\\\n```"',  # Most common format
-                        r'"text":\s*"```sql\\\\n(.*?)"',  # SQL block without closing
-                        r'(SELECT.*?LIMIT.*?)(?=")',  # Complete SELECT with LIMIT
-                        r'(SELECT.*?)(?=")',  # Any SELECT statement
-                    ]
                     
-                    for pattern in sql_patterns:
-                        matches = re.findall(pattern, viz.layout, re.DOTALL | re.IGNORECASE)
-                        if matches:
-                            sql_query = matches[0].strip()
-                            # Clean up escaped characters
-                            sql_query = sql_query.replace('\\n', '\n').replace('\\"', '"')
-                            break
+                    # Look specifically for Markdown elements with SQL
+                    def find_sql_in_layout(obj, path=""):
+                        if isinstance(obj, dict):
+                            # Check if this is a Markdown element with SQL
+                            if obj.get('type') == 'Markdown' and 'text' in obj:
+                                text = obj['text']
+                                if '```sql' in text:
+                                    print(f"DEBUG: Found Markdown with SQL at {path}")
+                                    # Extract SQL from markdown block
+                                    import re
+                                    match = re.search(r'```sql\s*\n(.*?)\n```', text, re.DOTALL)
+                                    if match:
+                                        return match.group(1).strip()
+                            
+                            # Check for text fields with SQL
+                            elif 'text' in obj and isinstance(obj['text'], str):
+                                text = obj['text']
+                                if '```sql' in text:
+                                    print(f"DEBUG: Found text with SQL at {path}")
+                                    import re
+                                    match = re.search(r'```sql\s*\n(.*?)\n```', text, re.DOTALL)
+                                    if match:
+                                        return match.group(1).strip()
+                            
+                            # Recursively search other objects
+                            for key, value in obj.items():
+                                result_sql = find_sql_in_layout(value, f"{path}.{key}")
+                                if result_sql:
+                                    return result_sql
+                                    
+                        elif isinstance(obj, list):
+                            for idx, item in enumerate(obj):
+                                result_sql = find_sql_in_layout(item, f"{path}[{idx}]")
+                                if result_sql:
+                                    return result_sql
+                        return None
                     
+                    sql_query = find_sql_in_layout(layout_data)
                     if sql_query:
+                        print(f"DEBUG: Successfully extracted SQL from layout: {sql_query[:100]}...")
                         break
                         
                 except json.JSONDecodeError:
+                    print(f"DEBUG: Failed to parse layout JSON for viz {i}")
                     continue
     
     # Method 3: Extract from export_data metadata
