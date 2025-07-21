@@ -454,10 +454,12 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                                     # Extract SQL from markdown block - try multiple patterns
                                     import re
                                     patterns = [
-                                        r'```sql\s*\n(.*?)\n```',  # Standard format
-                                        r'```sql\n(.*?)\n```',    # No extra spaces
-                                        r'```sql(.*?)```',        # Any content between
+                                        r'```sql\s*\n(.*?)```',   # Standard format - removed \n before ```
+                                        r'```sql\n(.*?)```',      # No extra spaces - removed \n before ```
                                         r'```sql\s*(.*?)```',     # With optional spaces
+                                        r'```sql(.*?)```',        # Any content between
+                                        r'```sql\s*\n(.*)',       # Everything after ```sql\n (no closing required)
+                                        r'```sql\n(.*)',          # Everything after ```sql\n (no closing required)
                                     ]
                                     
                                     for pattern in patterns:
