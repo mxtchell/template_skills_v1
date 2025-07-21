@@ -42,6 +42,141 @@ def is_chart_data_valid(chart_config):
     return True
 
 
+def format_number(value, is_currency=False):
+    """
+    Format numbers with proper formatting - commas, rounding, currency prefix
+    """
+    if not isinstance(value, (int, float)):
+        return value
+    
+    # Round large numbers to whole digits
+    if abs(value) >= 1000:
+        formatted_value = f"{value:,.0f}"
+    else:
+        formatted_value = f"{value:,.2f}"
+    
+    # Add currency prefix for sales values
+    if is_currency:
+        formatted_value = f"${formatted_value}"
+    
+    return formatted_value
+
+
+def format_table_data(table_data, columns):
+    """
+    Format table data with proper number formatting
+    """
+    formatted_data = []
+    for row in table_data:
+        formatted_row = {}
+        for key, value in row.items():
+            # Check if this looks like a currency field
+            is_currency_field = any(currency_word in key.lower() for currency_word in ['sales', 'revenue', 'price', 'cost', 'amount'])
+            
+            if isinstance(value, (int, float)):
+                formatted_row[key] = format_number(value, is_currency_field)
+            else:
+                formatted_row[key] = value
+        formatted_data.append(formatted_row)
+    
+    return formatted_data
+
+
+def enhance_chart_formatting(chart_config):
+    """
+    Enhance Highcharts configuration with better number and date formatting
+    """
+    if not chart_config or not isinstance(chart_config, dict):
+        return chart_config
+    
+    # Add tooltip formatting for better number display
+    if 'tooltip' not in chart_config:
+        chart_config['tooltip'] = {}
+    
+    # Enhanced tooltip formatter with currency detection
+    chart_config['tooltip']['formatter'] = """
+        function() {
+            var value = this.y;
+            var formattedValue;
+            
+            // Format large numbers with commas and rounding
+            if (Math.abs(value) >= 1000) {
+                formattedValue = Highcharts.numberFormat(value, 0);
+            } else {
+                formattedValue = Highcharts.numberFormat(value, 2);
+            }
+            
+            // Add currency prefix for sales/revenue values
+            var seriesName = this.series.name || '';
+            if (seriesName.toLowerCase().indexOf('sales') >= 0 || 
+                seriesName.toLowerCase().indexOf('revenue') >= 0 ||
+                seriesName.toLowerCase().indexOf('price') >= 0 ||
+                seriesName.toLowerCase().indexOf('cost') >= 0) {
+                formattedValue = '$' + formattedValue;
+            }
+            
+            var pointName = this.point.name || this.x;
+            if (this.point.category !== undefined) {
+                pointName = this.point.category;
+            }
+            
+            // Format dates in tooltip if it's a datetime axis
+            if (this.x && typeof this.x === 'number' && this.x > 1000000000000) {
+                pointName = Highcharts.dateFormat('%B %Y', this.x);
+            }
+            
+            return '<b>' + pointName + '</b><br/>' + 
+                   this.series.name + ': <b>' + formattedValue + '</b>';
+        }
+    """.strip()
+    
+    # Format yAxis labels for currency and large numbers
+    if 'yAxis' in chart_config:
+        yaxis = chart_config['yAxis']
+        if isinstance(yaxis, dict):
+            if 'labels' not in yaxis:
+                yaxis['labels'] = {}
+            
+            # Check if this appears to be a currency axis
+            title_text = yaxis.get('title', {}).get('text', '').lower()
+            is_currency_axis = any(word in title_text for word in ['sales', 'revenue', 'price', 'cost'])
+            
+            if is_currency_axis:
+                yaxis['labels']['formatter'] = """
+                    function() {
+                        if (Math.abs(this.value) >= 1000) {
+                            return '$' + Highcharts.numberFormat(this.value, 0);
+                        } else {
+                            return '$' + Highcharts.numberFormat(this.value, 2);
+                        }
+                    }
+                """.strip()
+            else:
+                yaxis['labels']['formatter'] = """
+                    function() {
+                        if (Math.abs(this.value) >= 1000) {
+                            return Highcharts.numberFormat(this.value, 0);
+                        } else {
+                            return Highcharts.numberFormat(this.value, 2);
+                        }
+                    }
+                """.strip()
+    
+    # Format xAxis for better date display
+    if 'xAxis' in chart_config:
+        xaxis = chart_config['xAxis']
+        if isinstance(xaxis, dict) and xaxis.get('type') == 'datetime':
+            if 'labels' not in xaxis:
+                xaxis['labels'] = {}
+            xaxis['labels']['formatter'] = """
+                function() {
+                    return Highcharts.dateFormat('%b %Y', this.value);
+                }
+            """.strip()
+    
+    return chart_config
+
+
 @skill(
     name="MI Data Explorer",
     description="A data explorer skill that returns both Highcharts visualization and table data together for MetricInsights integration. Provides comprehensive chart and tabular data response.",
@@ -181,8 +316,11 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                         if chart_config:
                             # Validate chart data before using it
                             if is_chart_data_valid(chart_config):
-                                # Use the chart data from visualization service
-                                chart_data = chart_config
+                                # Enhance chart formatting before using it
+                                enhanced_chart_config = enhance_chart_formatting(chart_config.copy())
+                                
+                                # Use the enhanced chart data from visualization service
+                                chart_data = enhanced_chart_config
                                 chart_title = chart_config.get('title', {}).get('text', f"Chart for: {user_question}")
                                 
                                 # Determine chart type from config
@@ -195,7 +333,7 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                                 else:
                                     chart_type = "LINE_CHART"
                                 
-                                print(f"DEBUG: Extracted valid chart type: {chart_type}")
+                                print(f"DEBUG: Extracted and enhanced valid chart type: {chart_type}")
                                 break
                             else:
                                 print(f"DEBUG: Chart data validation failed for viz {i} - contains corrupted/placeholder data")
@@ -220,7 +358,7 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
     # Create table structure
     if dataframe is not None and not dataframe.empty:
         # Convert DataFrame to required JSON format
-        table_data = dataframe.to_dict('records')
+        raw_table_data = dataframe.to_dict('records')
         
         # Create columns metadata
         columns = []
@@ -230,9 +368,12 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                 "label": col.replace('_', ' ').title()
             })
         
+        # Format the table data with proper number formatting
+        formatted_table_data = format_table_data(raw_table_data, columns)
+        
         table_structure = {
             "data_type": "table",
-            "data": table_data,
+            "data": formatted_table_data,
             "columns": columns
         }
         
