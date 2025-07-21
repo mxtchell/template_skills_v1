@@ -309,11 +309,26 @@ def mi_data_explorer(parameters: SkillInput) -> SkillOutput:
                                 text = obj['text']
                                 if '```sql' in text:
                                     print(f"DEBUG: Found Markdown with SQL at {path}")
-                                    # Extract SQL from markdown block
+                                    print(f"DEBUG: Markdown text preview: {repr(text[:200])}...")
+                                    # Extract SQL from markdown block - try multiple patterns
                                     import re
-                                    match = re.search(r'```sql\s*\n(.*?)\n```', text, re.DOTALL)
-                                    if match:
-                                        return match.group(1).strip()
+                                    patterns = [
+                                        r'```sql\s*\n(.*?)\n```',  # Standard format
+                                        r'```sql\n(.*?)\n```',    # No extra spaces
+                                        r'```sql(.*?)```',        # Any content between
+                                        r'```sql\s*(.*?)```',     # With optional spaces
+                                    ]
+                                    
+                                    for pattern in patterns:
+                                        match = re.search(pattern, text, re.DOTALL)
+                                        if match:
+                                            sql_result = match.group(1).strip()
+                                            print(f"DEBUG: SQL extraction successful with pattern: {pattern}")
+                                            print(f"DEBUG: Extracted SQL preview: {sql_result[:100]}...")
+                                            return sql_result
+                                    
+                                    print(f"DEBUG: No SQL extraction patterns matched")
+                                    return None
                             
                             # Check for text fields with SQL
                             elif 'text' in obj and isinstance(obj['text'], str):
