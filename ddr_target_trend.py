@@ -73,13 +73,13 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value="Based on the following DDR performance vs target facts: {{facts}}, provide insights focusing on performance vs target analysis, variance trends, and periods where actual DDR exceeded or fell short of targets."
+            default_value="Analyze DDR vs target performance in 100-150 words: {{facts}}. Focus on: 1) Over/under target periods, 2) Key trends, 3) Achievement rate."
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value="Analyze the following DDR vs target performance data: {{facts}}. Focus on: 1) Periods where performance exceeded or missed targets, 2) Variance trends over time, 3) Achievement rates and performance patterns, 4) Actionable insights for improving target achievement."
+            default_value="Provide a 100-150 word analysis of DDR vs target: {{facts}}. Include: 1) Over/under target periods, 2) Variance trends, 3) Achievement rate, 4) Key recommendations."
         ),
         SkillParameter(
             name="table_viz_layout",
@@ -110,6 +110,9 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
 def ddr_target_trend(parameters: SkillInput):
     print("DEBUG: Starting DDR vs Target Trend skill execution")
     print(f"DEBUG: Skill received following parameters: {parameters.arguments}")
+    
+    # DEBUG: Inspect default chart layout for single axis modification
+    print(f"DEBUG: Default chart layout preview: {parameters.arguments.chart_viz_layout[:500]}...")
     
     # Initialize parameter dictionary with DDR-specific defaults
     param_dict = {
@@ -168,6 +171,14 @@ def ddr_target_trend(parameters: SkillInput):
 
     charts = env.trend.get_dynamic_layout_chart_vars()
     print(f"DEBUG: Retrieved chart variables for {len(charts)} charts: {list(charts.keys())}")
+    
+    # DEBUG: Inspect chart configuration for single axis solution
+    for chart_name, chart_vars in charts.items():
+        print(f"DEBUG: Chart '{chart_name}' variables:")
+        for key, value in chart_vars.items():
+            if 'axis' in key.lower() or 'series' in key.lower():
+                print(f"DEBUG:   {key}: {str(value)[:200]}...")
+        print(f"DEBUG: Chart '{chart_name}' has {len(chart_vars)} total variables")
 
     viz, slides, insights, final_prompt = render_layout(charts,
                                                tables,
@@ -197,6 +208,66 @@ def ddr_target_trend(parameters: SkillInput):
         export_data=[ExportData(name="Metrics Table", data=tables[0]),
                      *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
+
+def create_single_axis_chart_layout(default_layout):
+    """
+    Modify the chart layout to force all metrics onto a single Y-axis.
+    This overrides AdvanceTrend's default dual-axis behavior.
+    """
+    print("DEBUG: Creating single-axis chart layout override")
+    
+    try:
+        import json
+        layout_data = json.loads(default_layout)
+        print(f"DEBUG: Parsed chart layout with {len(str(layout_data))} characters")
+        
+        # Find and modify Highcharts configuration
+        def modify_highcharts_config(obj, path=""):
+            if isinstance(obj, dict):
+                # Look for Highcharts chart configuration
+                if 'type' in obj and obj.get('type') == 'HighchartsChart':
+                    print(f"DEBUG: Found HighchartsChart at {path}")
+                    if 'options' in obj:
+                        options = obj['options']
+                        print(f"DEBUG: Modifying Highcharts options")
+                        
+                        # Force single Y-axis configuration
+                        if 'yAxis' in options:
+                            # If yAxis is an array (multiple axes), force to single axis
+                            if isinstance(options['yAxis'], list):
+                                print("DEBUG: Converting multiple Y-axes to single axis")
+                                options['yAxis'] = options['yAxis'][0]  # Use first axis only
+                            
+                            # Ensure single axis configuration
+                            if isinstance(options['yAxis'], dict):
+                                options['yAxis']['opposite'] = False  # Force to left side
+                                print("DEBUG: Set yAxis opposite = False")
+                        
+                        # Ensure all series use the same Y-axis
+                        if 'series' in options and isinstance(options['series'], list):
+                            for i, series in enumerate(options['series']):
+                                if isinstance(series, dict):
+                                    series['yAxis'] = 0  # Force all series to use axis 0
+                                    print(f"DEBUG: Set series {i} to use yAxis 0")
+                        
+                        print("DEBUG: Single-axis modification complete")
+                
+                # Recursively process nested objects
+                for key, value in obj.items():
+                    modify_highcharts_config(value, f"{path}.{key}")
+            
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    modify_highcharts_config(item, f"{path}[{i}]")
+        
+        modify_highcharts_config(layout_data)
+        modified_layout = json.dumps(layout_data)
+        print(f"DEBUG: Created modified single-axis layout")
+        return modified_layout
+        
+    except Exception as e:
+        print(f"DEBUG: Error modifying chart layout: {e}")
+        return default_layout
 
 def map_chart_variables(chart_vars, prefix):
     """
@@ -263,12 +334,18 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
 
     viz = []
     slides = []
+    
+    # Create single-axis chart layout override
+    single_axis_layout = create_single_axis_chart_layout(chart_viz_layout)
+    
     for name, chart_vars in charts.items():
         print(f"DEBUG: Processing chart: {name}")
         chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "DDR vs Target Analysis"
-        rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
+        
+        # Use the modified single-axis layout instead of default
+        rendered = wire_layout(json.loads(single_axis_layout), {**tab_vars, **chart_vars})
         viz.append(SkillVisualization(title=name, layout=rendered))
-        print(f"DEBUG: Added visualization for chart: {name}")
+        print(f"DEBUG: Added visualization for chart: {name} with single-axis layout")
 
         prefixes = ["absolute_", "growth_", "difference_"]
 
