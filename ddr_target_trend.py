@@ -47,6 +47,12 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
             default_value=10
         ),
         SkillParameter(
+            name="breakouts",
+            is_multi=True,
+            constrained_to="dimensions",
+            description="breakout dimension(s) for analysis. DISABLED for DDR vs Target analysis - always empty."
+        ),
+        SkillParameter(
             name="time_granularity",
             is_multi=False,
             constrained_to="date_dimensions",
@@ -113,7 +119,7 @@ def ddr_target_trend(parameters: SkillInput):
         "periods": [], 
         "metrics": None,  # Will be set based on ddr_pair selection
         "limit_n": 10, 
- 
+        "breakouts": [],  # Always empty for DDR vs Target analysis
         "growth_type": "None", 
         "other_filters": [], 
         "time_granularity": None,
@@ -123,8 +129,13 @@ def ddr_target_trend(parameters: SkillInput):
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
-            param_dict[key] = getattr(parameters.arguments, key)
-            print(f"DEBUG: Set {key} = {param_dict[key]}")
+            if key == "breakouts":
+                # Force breakouts to always be empty for DDR vs Target analysis
+                param_dict[key] = []
+                print(f"DEBUG: Forced {key} = [] (disabled for DDR vs Target)")
+            else:
+                param_dict[key] = getattr(parameters.arguments, key)
+                print(f"DEBUG: Set {key} = {param_dict[key]}")
 
     # Map DDR pair selection to actual metrics
     ddr_pair = param_dict.get("ddr_pair")
