@@ -171,18 +171,17 @@ def ddr_target_trend(parameters: SkillInput):
     tables = [env.trend.display_dfs.get("Metrics Table")]
     print(f"DEBUG: Retrieved metrics table: {tables[0].shape if tables[0] is not None else 'None'}")
     
-    # DEBUG: Log table data for newsletter integration
+    # DEBUG: Log table data for newsletter integration (condensed)
     if tables[0] is not None:
         print("=== NEWSLETTER TABLE DATA ===")
         print(f"TABLE_SHAPE: {tables[0].shape}")
-        print(f"TABLE_COLUMNS: {list(tables[0].columns)}")
-        print("TABLE_DATA:")
-        print(tables[0].to_string())
-        print("TABLE_JSON:")
-        print(tables[0].to_json(orient='records', indent=2))
+        print(f"TABLE_COLUMNS: {list(tables[0].columns)[:10]}...") # First 10 columns only
+        print("TABLE_DATA (first 5 columns):")
+        print(tables[0].iloc[:, :5].to_string())  # First 5 columns only
 
     # CRITICAL: Calculate DDR vs Target variance for better insights
-    variance_df = calculate_ddr_variance(env.trend.df, param_dict["ddr_pair"])
+    # Use the actual dataframe from the trend analysis
+    variance_df = calculate_ddr_variance(df, param_dict["ddr_pair"])
     print(f"DEBUG: Created variance dataframe with {len(variance_df)} rows")
     
     insights_dfs = [env.trend.df_notes, env.trend.facts, env.trend.top_facts, env.trend.bottom_facts, variance_df]
