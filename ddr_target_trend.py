@@ -26,12 +26,7 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
     description="Analyzes DDR1 or DDR2 detection rates against targets over time periods. ONLY use when user mentions DDR1, DDR2, plan, or target. Do not use for other metrics.",
     capabilities="Compares actual DDR performance vs targets, identifies over/under-performing periods, shows variance trends. Restricted to DDR metrics only.",
     limitations="Only works with DDR1/DDR2 metrics and their targets. For all other metrics, use the standard trend analysis skill.",
-    example_questions=[
-        "How did my branch perform in DDR2 last week?",
-        "Show me DDR1 vs target for Q2 2019",
-        "DDR2 performance vs plan by region last month",
-        "DDR1 vs target trending over the last 6 months"
-    ],
+    example_questions="How did my branch perform in DDR2 last week? Show me DDR1 vs target for Q2 2019. DDR2 performance vs plan by region last month. DDR1 vs target trending over the last 6 months.",
     parameter_guidance="Select DDR1 or DDR2 for analysis. Specify time periods and optional breakout dimensions. Focus on performance vs target comparison.",
     parameters=[
         SkillParameter(
