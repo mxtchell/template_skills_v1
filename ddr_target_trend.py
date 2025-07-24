@@ -22,7 +22,7 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
 
 @skill(
     name="DDR vs Target Trend",
-    llm_name="DDR vs Target Trend Analysis",
+    llm_name="DDR_vs_Target_Trend_Analysis",
     description="Analyzes DDR1 or DDR2 detection rates against targets over time periods. ONLY use when user mentions DDR1, DDR2, plan, or target. Do not use for other metrics.",
     capabilities="Compares actual DDR performance vs targets, identifies over/under-performing periods, shows variance trends. Restricted to DDR metrics only.",
     limitations="Only works with DDR1/DDR2 metrics and their targets. For all other metrics, use the standard trend analysis skill.",
@@ -61,9 +61,9 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
         SkillParameter(
             name="growth_type",
             constrained_to=None,
-            constrained_values=["vs. Target", "None"],
-            description="Growth type focused on target comparison: 'vs. Target' or 'None'",
-            default_value="vs. Target"
+            constrained_values=["None"],
+            description="Growth type set to None to avoid automatic target metric construction",
+            default_value="None"
         ),
         SkillParameter(
             name="other_filters",
@@ -117,7 +117,7 @@ def ddr_target_trend(parameters: SkillInput):
         "metrics": None,  # Will be set based on ddr_pair selection
         "limit_n": 10, 
         "breakouts": [], 
-        "growth_type": "vs. Target", 
+        "growth_type": "None", 
         "other_filters": [], 
         "time_granularity": None,
         "ddr_pair": None
@@ -312,7 +312,7 @@ if __name__ == '__main__':
     skill_input: SkillInput = ddr_target_trend.create_input(arguments={
         'ddr_pair': 'DDR1',
         'periods': ["2019", "2018"],
-        'growth_type': "vs. Target",
+        'growth_type': "None",
         "other_filters": [{"dim": "branch", "op": "=", "val": ["branch_a"]}]
     })
     print(f"DEBUG: Created test input: {skill_input.arguments}")
