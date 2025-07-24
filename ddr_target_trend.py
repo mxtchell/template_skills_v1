@@ -170,12 +170,42 @@ def ddr_target_trend(parameters: SkillInput):
     
     tables = [env.trend.display_dfs.get("Metrics Table")]
     print(f"DEBUG: Retrieved metrics table: {tables[0].shape if tables[0] is not None else 'None'}")
+    
+    # DEBUG: Log table data for newsletter integration
+    if tables[0] is not None:
+        print("=== NEWSLETTER TABLE DATA ===")
+        print(f"TABLE_SHAPE: {tables[0].shape}")
+        print(f"TABLE_COLUMNS: {list(tables[0].columns)}")
+        print("TABLE_DATA:")
+        print(tables[0].to_string())
+        print("TABLE_JSON:")
+        print(tables[0].to_json(orient='records', indent=2))
 
-    insights_dfs = [env.trend.df_notes, env.trend.facts, env.trend.top_facts, env.trend.bottom_facts]
-    print(f"DEBUG: Retrieved {len([df for df in insights_dfs if df is not None])} insight dataframes")
+    # CRITICAL: Calculate DDR vs Target variance for better insights
+    variance_df = calculate_ddr_variance(env.trend.df, param_dict["ddr_pair"])
+    print(f"DEBUG: Created variance dataframe with {len(variance_df)} rows")
+    
+    insights_dfs = [env.trend.df_notes, env.trend.facts, env.trend.top_facts, env.trend.bottom_facts, variance_df]
+    print(f"DEBUG: Retrieved {len([df for df in insights_dfs if df is not None])} insight dataframes (including variance)")
 
     charts = env.trend.get_dynamic_layout_chart_vars()
     print(f"DEBUG: Retrieved chart variables for {len(charts)} charts: {list(charts.keys())}")
+    
+    # DEBUG: Log chart data for newsletter integration
+    for chart_name, chart_vars in charts.items():
+        print(f"=== NEWSLETTER CHART DATA: {chart_name} ===")
+        
+        # Log series data (the actual chart values)
+        if 'absolute_series' in chart_vars:
+            print(f"CHART_SERIES_DATA: {json.dumps(chart_vars['absolute_series'], indent=2)}")
+        
+        # Log x-axis categories (dates/periods)
+        if 'absolute_x_axis_categories' in chart_vars:
+            print(f"CHART_X_AXIS: {chart_vars['absolute_x_axis_categories']}")
+        
+        # Log table data if available
+        if 'absolute_meta_df_id' in chart_vars:
+            print(f"CHART_TABLE_ID: {chart_vars['absolute_meta_df_id']}")
     
     # DEBUG: Inspect chart configuration for single axis solution
     for chart_name, chart_vars in charts.items():
@@ -216,6 +246,106 @@ def ddr_target_trend(parameters: SkillInput):
         export_data=[ExportData(name="Metrics Table", data=tables[0]),
                      *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
+
+def calculate_ddr_variance(df, ddr_pair):
+    """
+    Calculate DDR vs Target variance for better insights.
+    Returns a dataframe with variance analysis facts.
+    """
+    print("DEBUG: Starting DDR variance calculation")
+    
+    try:
+        import pandas as pd
+        
+        # Determine metric names based on DDR pair
+        if ddr_pair == "DDR1":
+            ddr_metric = "ddr1"
+            target_metric = "target_ddr1"
+        else:  # DDR2
+            ddr_metric = "ddr2" 
+            target_metric = "target_ddr2"
+        
+        print(f"DEBUG: Calculating variance for {ddr_metric} vs {target_metric}")
+        
+        # Filter dataframe to only include our metrics
+        ddr_df = df[df['metric'].isin([ddr_metric, target_metric])].copy()
+        
+        if ddr_df.empty:
+            print("DEBUG: No data found for variance calculation")
+            return pd.DataFrame([{'fact': 'No variance data available'}])
+        
+        # Pivot to get DDR and Target as columns
+        pivot_df = ddr_df.pivot_table(
+            index=['date_dimension'], 
+            columns='metric', 
+            values='value', 
+            aggfunc='first'
+        ).reset_index()
+        
+        print(f"DEBUG: Pivot dataframe shape: {pivot_df.shape}")
+        print(f"DEBUG: Pivot columns: {list(pivot_df.columns)}")
+        
+        # Calculate variance
+        if ddr_metric in pivot_df.columns and target_metric in pivot_df.columns:
+            pivot_df['variance'] = pivot_df[ddr_metric] - pivot_df[target_metric]
+            
+            # Create variance facts
+            variance_facts = []
+            
+            # Overall performance vs target
+            avg_variance = pivot_df['variance'].mean()
+            if avg_variance > 0.01:
+                performance = f"outperformed target by an average of {avg_variance:.3f}"
+            elif avg_variance < -0.01:
+                performance = f"underperformed target by an average of {abs(avg_variance):.3f}"
+            else:
+                performance = "performed closely aligned with target"
+            
+            variance_facts.append(f"Overall, your branch {performance} throughout the period.")
+            
+            # Best performing period
+            best_period = pivot_df.loc[pivot_df['variance'].idxmax()]
+            variance_facts.append(f"Best performance was in {best_period['date_dimension']} with DDR {best_period[ddr_metric]:.3f} vs target {best_period[target_metric]:.3f} (variance: +{best_period['variance']:.3f})")
+            
+            # Worst performing period  
+            worst_period = pivot_df.loc[pivot_df['variance'].idxmin()]
+            variance_facts.append(f"Lowest performance was in {worst_period['date_dimension']} with DDR {worst_period[ddr_metric]:.3f} vs target {worst_period[target_metric]:.3f} (variance: {worst_period['variance']:.3f})")
+            
+            # Months above/below target
+            above_target = len(pivot_df[pivot_df['variance'] > 0])
+            below_target = len(pivot_df[pivot_df['variance'] < 0])
+            total_periods = len(pivot_df)
+            
+            variance_facts.append(f"Performance breakdown: {above_target} periods above target, {below_target} periods below target out of {total_periods} total periods")
+            
+            # Trend analysis
+            if len(pivot_df) > 1:
+                early_variance = pivot_df.iloc[:len(pivot_df)//2]['variance'].mean()
+                late_variance = pivot_df.iloc[len(pivot_df)//2:]['variance'].mean()
+                
+                if late_variance > early_variance + 0.01:
+                    trend = "improving trend with stronger performance in later periods"
+                elif late_variance < early_variance - 0.01:
+                    trend = "declining trend with weaker performance in later periods"
+                else:
+                    trend = "consistent performance pattern across periods"
+                
+                variance_facts.append(f"Variance trend shows {trend}")
+            
+            # Create dataframe with variance facts
+            variance_df = pd.DataFrame([{'fact': fact} for fact in variance_facts])
+            print(f"DEBUG: Created {len(variance_facts)} variance facts")
+            
+            return variance_df
+            
+        else:
+            print(f"DEBUG: Required metrics not found in pivot. Available: {list(pivot_df.columns)}")
+            return pd.DataFrame([{'fact': 'Unable to calculate variance - missing required metrics'}])
+            
+    except Exception as e:
+        print(f"DEBUG: Error in variance calculation: {e}")
+        import pandas as pd
+        return pd.DataFrame([{'fact': f'Variance calculation error: {str(e)}'}])
 
 def force_single_axis_chart_vars(charts):
     """
