@@ -5,6 +5,7 @@ metric_drivers.py
 custom_metric_drivers.py
 advanced_drivers.py
 trend.py
+ddr_target_trend.py
 forecast_skill.py
 metricinsights_data_explorer.py
 jinja_data_explorer.py
