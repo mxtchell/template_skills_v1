@@ -73,13 +73,13 @@ print("DEBUG: Initializing DDR vs Target Trend skill")
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value="Analyze DDR vs target performance in 100-150 words: {{facts}}. Focus on: 1) Over/under target periods, 2) Key trends, 3) Achievement rate."
+            default_value="Analyze DDR vs target performance in 100-150 words: {{facts}}. Focus on: 1) How DDR performed against target (above/below/aligned), 2) Key trends over time, 3) Notable periods or changes. Avoid mathematical sums - DDR is a percentage rate."
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value="Provide a 100-150 word analysis of DDR vs target: {{facts}}. Include: 1) Over/under target periods, 2) Variance trends, 3) Achievement rate, 4) Key recommendations."
+            default_value="Provide a 100-150 word analysis of DDR vs target: {{facts}}. Include: 1) Overall performance vs target, 2) Trend direction (improving/declining), 3) Key periods of interest, 4) Brief recommendations. Remember DDR is a percentage rate - avoid summing percentages."
         ),
         SkillParameter(
             name="table_viz_layout",
