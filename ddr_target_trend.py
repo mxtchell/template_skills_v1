@@ -275,7 +275,7 @@ def calculate_ddr_variance(df, ddr_pair):
         
         # Pivot to get DDR and Target as columns
         pivot_df = ddr_df.pivot_table(
-            index=['date_dimension'], 
+            index=['date_column'], 
             columns='metric', 
             values='value', 
             aggfunc='first'
@@ -304,11 +304,11 @@ def calculate_ddr_variance(df, ddr_pair):
             
             # Best performing period
             best_period = pivot_df.loc[pivot_df['variance'].idxmax()]
-            variance_facts.append(f"Best performance was in {best_period['date_dimension']} with DDR {best_period[ddr_metric]:.3f} vs target {best_period[target_metric]:.3f} (variance: +{best_period['variance']:.3f})")
+            variance_facts.append(f"Best performance was in {best_period['date_column']} with DDR {best_period[ddr_metric]:.3f} vs target {best_period[target_metric]:.3f} (variance: +{best_period['variance']:.3f})")
             
             # Worst performing period  
             worst_period = pivot_df.loc[pivot_df['variance'].idxmin()]
-            variance_facts.append(f"Lowest performance was in {worst_period['date_dimension']} with DDR {worst_period[ddr_metric]:.3f} vs target {worst_period[target_metric]:.3f} (variance: {worst_period['variance']:.3f})")
+            variance_facts.append(f"Lowest performance was in {worst_period['date_column']} with DDR {worst_period[ddr_metric]:.3f} vs target {worst_period[target_metric]:.3f} (variance: {worst_period['variance']:.3f})")
             
             # Months above/below target
             above_target = len(pivot_df[pivot_df['variance'] > 0])
