@@ -179,6 +179,9 @@ def ddr_target_trend(parameters: SkillInput):
             if 'axis' in key.lower() or 'series' in key.lower():
                 print(f"DEBUG:   {key}: {str(value)[:200]}...")
         print(f"DEBUG: Chart '{chart_name}' has {len(chart_vars)} total variables")
+    
+    # CRITICAL FIX: Modify chart variables to force single Y-axis BEFORE layout rendering
+    charts = force_single_axis_chart_vars(charts)
 
     viz, slides, insights, final_prompt = render_layout(charts,
                                                tables,
@@ -208,6 +211,52 @@ def ddr_target_trend(parameters: SkillInput):
         export_data=[ExportData(name="Metrics Table", data=tables[0]),
                      *[ExportData(name=chart, data=display_charts[chart].get("df")) for chart in display_charts.keys()]]
     )
+
+def force_single_axis_chart_vars(charts):
+    """
+    CRITICAL FIX: Modify chart variables to force single Y-axis.
+    This intercepts AdvanceTrend's dual-axis configuration before layout rendering.
+    """
+    print("DEBUG: CRITICAL FIX - Forcing single Y-axis in chart variables")
+    
+    modified_charts = {}
+    for chart_name, chart_vars in charts.items():
+        print(f"DEBUG: Processing chart variables for: {chart_name}")
+        modified_vars = chart_vars.copy()
+        
+        # Fix the Y-axis configuration - this is the key fix
+        if 'absolute_y_axis' in modified_vars:
+            original_y_axis = modified_vars['absolute_y_axis']
+            print(f"DEBUG: Original Y-axis config: {original_y_axis}")
+            
+            if isinstance(original_y_axis, list) and len(original_y_axis) > 1:
+                # FORCE SINGLE AXIS: Use only the first axis, combine titles
+                first_axis = original_y_axis[0].copy()
+                second_axis = original_y_axis[1]
+                
+                # Combine titles to show both metrics
+                combined_title = f"{first_axis.get('title', '')} & {second_axis.get('title', '')}"
+                first_axis['title'] = combined_title
+                first_axis['opposite'] = False  # Force to left side only
+                
+                # Replace dual-axis with single axis
+                modified_vars['absolute_y_axis'] = [first_axis]  # Single axis in array
+                print(f"DEBUG: FIXED Y-axis to single axis: {modified_vars['absolute_y_axis']}")
+            
+        # Ensure all series use the same Y-axis (axis 0)
+        if 'absolute_series' in modified_vars:
+            series_data = modified_vars['absolute_series']
+            if isinstance(series_data, list):
+                for i, series in enumerate(series_data):
+                    if isinstance(series, dict):
+                        series['yAxis'] = 0  # Force all series to use axis 0
+                        print(f"DEBUG: Set series {i} '{series.get('name', '')}' to use yAxis 0")
+        
+        modified_charts[chart_name] = modified_vars
+        print(f"DEBUG: Completed single-axis fix for chart: {chart_name}")
+    
+    print("DEBUG: CRITICAL FIX COMPLETE - All charts now use single Y-axis")
+    return modified_charts
 
 def create_single_axis_chart_layout(default_layout):
     """
@@ -335,17 +384,14 @@ def render_layout(charts, tables, title, subtitle, insights_dfs, warnings, max_p
     viz = []
     slides = []
     
-    # Create single-axis chart layout override
-    single_axis_layout = create_single_axis_chart_layout(chart_viz_layout)
-    
     for name, chart_vars in charts.items():
         print(f"DEBUG: Processing chart: {name}")
         chart_vars["footer"] = f"*{chart_vars['footer']}" if chart_vars.get('footer') else "DDR vs Target Analysis"
         
-        # Use the modified single-axis layout instead of default
-        rendered = wire_layout(json.loads(single_axis_layout), {**tab_vars, **chart_vars})
+        # Use regular layout - chart variables have already been fixed for single axis
+        rendered = wire_layout(json.loads(chart_viz_layout), {**tab_vars, **chart_vars})
         viz.append(SkillVisualization(title=name, layout=rendered))
-        print(f"DEBUG: Added visualization for chart: {name} with single-axis layout")
+        print(f"DEBUG: Added visualization for chart: {name} with single-axis variables")
 
         prefixes = ["absolute_", "growth_", "difference_"]
 
