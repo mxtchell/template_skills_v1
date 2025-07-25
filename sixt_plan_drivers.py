@@ -87,32 +87,27 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a DDR performance analysis focused on the data provided. Use ONLY the facts and data from the analysis below.
+default_value="""Write a professional DDR performance analysis using only the data provided below. Use business narrative style, not bullet points.
 
-## DDR Performance Analysis ##
+## Malaga Aeropuerto DDR Performance Analysis ##
 
 **Performance Overview:**
-Based on the provided data, analyze the DDR performance vs target and identify the key drivers.
+Start with the overall DDR performance vs target, highlighting the current value, target value, and variance. Mention the key trend (improvement/decline/stable).
 
-**Key Drivers:**
-Use the breakout analysis data to identify which employees, products, or other factors are driving performance above/below target.
+**Key Performance Drivers:**
+Analyze the employee and product breakouts to identify what's driving performance above or below target. Write in narrative form explaining which employees and product segments are contributing most to results.
 
-**Supporting Metrics Context:**
-The analysis includes supporting metrics data for:
-- Checkin Count: Transaction volume that impacts workload
-- Damage At Check In: Rate of damage detection during check-in process  
-- Live Check In Rate: Digital tool adoption rate
-- Months Maturity Employee: Average employee experience level
+**Supporting Metrics Analysis:**
+If supporting metrics data is provided in the facts (Checkin Count, Damage At Check In rate, Live Check In Rate, Employee Experience), explain how these operational metrics correlate with DDR performance. Connect the dots between operational efficiency and damage detection outcomes.
 
-Reference these metrics ONLY if they appear in the provided facts data. Do not make assumptions about values not provided.
+**Business Implications:**
+Summarize why DDR is performing as it is based on the data provided. Focus on actionable insights about staff performance, product mix, and operational factors.
 
-**Root Cause Analysis:**
-Connect the driver analysis and supporting metrics to explain WHY DDR performance is over/under target. Use only the data provided in the facts.
-
-Write a concise analysis based solely on the facts provided below. Do not add assumptions or generic business insights not supported by the data.
+Write in professional business language with complete sentences and paragraphs. Avoid bullet points and lists. Base analysis solely on the facts provided below.
 
 Facts:
 {{facts}}
+
 Summary:"""
         ),
         SkillParameter(
@@ -159,9 +154,16 @@ def sixt_plan_drivers(parameters: SkillInput):
     try:
         supporting_metrics_df = create_supporting_metrics_analysis(env)
         if supporting_metrics_df is not None:
+            print(f"DEBUG: Supporting metrics DF created with shape: {supporting_metrics_df.shape}")
+            print(f"DEBUG: Supporting metrics DF columns: {supporting_metrics_df.columns.tolist()}")
+            print(f"DEBUG: Supporting metrics DF preview: {supporting_metrics_df.head().to_dict()}")
             insights_dfs.append(supporting_metrics_df)
+        else:
+            print("DEBUG: Supporting metrics DF is None")
     except Exception as e:
         print(f"DEBUG: Error creating supporting metrics analysis: {e}")
+        import traceback
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
 
     warning_messages = env.da.get_warning_messages()
 
@@ -779,10 +781,16 @@ class SixtMetricDriver(DriverAnalysis):
 
         # rename columns - use different label for vs target metrics
         # Check if this is vs target analysis using check_vs_enabled function
-        if check_vs_enabled([self.metric] if hasattr(self, 'metric') and self.metric else []):
+        current_metric = getattr(self, 'metric', None)
+        print(f"DEBUG: self.metric = {current_metric}")
+        print(f"DEBUG: check_vs_enabled result = {check_vs_enabled([current_metric] if current_metric else [])}")
+        
+        if check_vs_enabled([current_metric] if current_metric else []):
+            print("DEBUG: Using vs target column names")
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
         else:
+            print("DEBUG: Using standard column names")
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
         
