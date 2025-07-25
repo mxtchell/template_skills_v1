@@ -289,21 +289,16 @@ def create_trend_chart(env, insights=None):
         'live_check_in_rate'
     ]
     
-    # Create trend environment with monthly periods for both years
+    # Create trend environment with monthly periods for current year only
     current_year_periods = []
-    previous_year_periods = []
     
     for month in range(1, 13):
         month_name = calendar.month_name[month].lower()[:3]  # jan, feb, etc.
         current_year_periods.append(f"{month_name} {current_year}")
-        previous_year_periods.append(f"{month_name} {previous_year}")
-    
-    # Combine both years for comprehensive analysis
-    all_periods = previous_year_periods + current_year_periods
     
     # Create trend environment 
     trend_env = SimpleNamespace()
-    trend_env.periods = all_periods  # Use both years
+    trend_env.periods = current_year_periods  # Use only current year
     trend_env.metrics = trend_metrics
     trend_env.breakouts = []
     trend_env.growth_type = "Y/Y"  # Year-over-year comparison for supporting metrics
@@ -311,7 +306,7 @@ def create_trend_chart(env, insights=None):
     trend_env.time_granularity = "month"  # Monthly granularity
     trend_env.limit_n = 10
     
-    print(f"DEBUG: Creating AdvanceTrend with periods for both years: {len(all_periods)} periods")
+    print(f"DEBUG: Creating AdvanceTrend with periods for current year: {len(current_year_periods)} periods")
     
     try:
         # Set up trend analysis
