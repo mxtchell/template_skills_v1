@@ -140,12 +140,15 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
-    # Add trend chart for vs target metrics
+    # Add trend charts for vs target metrics
     if check_vs_enabled([env.metric]):
-        print(f"DEBUG: Creating trend chart for vs target metric")
-        trend_viz = create_trend_chart(env, insights)
-        if trend_viz:
-            viz.append(trend_viz)
+        print(f"DEBUG: Creating trend charts for vs target metric")
+        trend_vizs = create_trend_chart(env, insights)
+        if trend_vizs:
+            if isinstance(trend_vizs, list):
+                viz.extend(trend_vizs)  # Add multiple charts
+            else:
+                viz.append(trend_vizs)  # Add single chart (fallback)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -165,8 +168,9 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
         # Calculate YoY changes for each supporting metric
         insights = []
         
-        print(f"DEBUG: Correlation analysis DF columns: {df.columns.tolist()}")
-        print(f"DEBUG: Correlation analysis DF shape: {df.shape}")
+        print(f"**zz DEBUG: Correlation analysis DF columns: {df.columns.tolist()}")
+        print(f"**zz DEBUG: Correlation analysis DF shape: {df.shape}")
+        print(f"**zz DEBUG: Sample data from DF: {df.head()}")
         
         # Group by metric and calculate yearly averages
         yearly_averages = {}
@@ -189,19 +193,24 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
                         yoy_change = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg != 0 else 0
                         yearly_averages[f"{metric}_yoy_change"] = yoy_change
                         
-                        print(f"DEBUG: {metric} - {previous_year}: {previous_avg:.3f}, {current_year}: {current_avg:.3f}, YoY: {yoy_change:.1f}%")
+                        print(f"**zz DEBUG: {metric} - {previous_year}: {previous_avg:.3f}, {current_year}: {current_avg:.3f}, YoY: {yoy_change:.1f}%")
         
         # Generate correlation insights based on business logic
         correlation_text = generate_correlation_insights(yearly_averages, current_year, previous_year)
         
+        print(f"**zz DEBUG: Generated correlation text: {correlation_text}")
         return correlation_text
         
     except Exception as e:
-        print(f"DEBUG: Error in correlation analysis: {e}")
+        print(f"**zz DEBUG: Error in correlation analysis: {e}")
+        import traceback
+        print(f"**zz DEBUG: Full traceback: {traceback.format_exc()}")
         return "Unable to perform correlation analysis on supporting metrics."
 
 def generate_correlation_insights(yearly_averages, current_year, previous_year):
     """Generate business insights from YoY correlation analysis"""
+    print(f"**zz DEBUG: yearly_averages keys: {list(yearly_averages.keys())}")
+    print(f"**zz DEBUG: yearly_averages values: {yearly_averages}")
     insights = []
     
     # Check for significant changes in key metrics
@@ -307,41 +316,33 @@ def create_trend_chart(env, insights=None):
         
         print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
         
-        # Create YoY analysis for supporting metrics
-        correlation_insights = analyze_supporting_metrics_correlation(df, current_year, previous_year, trend_metrics)
+        # Get chart variables for all chart types
+        charts = trend_analysis.get_dynamic_layout_chart_vars()
         
-        # Get chart variables (only show current year in chart)
-        # Reset to current year only for visualization
-        trend_env.periods = current_year_periods
-        TrendTemplateParameterSetup(env=trend_env)
-        chart_analysis = AdvanceTrend.from_env(env=trend_env)
-        chart_df = chart_analysis.run_from_env()
-        charts = chart_analysis.get_dynamic_layout_chart_vars()
-        
-        # Create visualization using the first chart
+        # Create multiple visualizations for all chart types (absolute, growth, difference)
         if charts:
-            chart_name, chart_vars = next(iter(charts.items()))
+            viz_list = []
             
-            # Combine original insights with correlation analysis
+            # Prepare base variables for chart layout
             combined_insights = insights if insights else ""
-            if correlation_insights:
-                combined_insights += f"\n\n**Supporting Metrics Analysis:**\n{correlation_insights}"
             
-            # Prepare variables for chart layout
-            tab_vars = {
-                "headline": f"Supporting Metrics Trends - {current_year}",
-                "sub_headline": "Monthly trend analysis of key operational metrics with YoY correlation",
-                "hide_growth_warning": True,
-                "exec_summary": combined_insights,
-                "warning": []
-            }
+            # Create a visualization for each chart type
+            for chart_name, chart_vars in charts.items():
+                tab_vars = {
+                    "headline": f"Supporting Metrics Trends - {current_year}",
+                    "sub_headline": f"Monthly trend analysis - {chart_name}",
+                    "hide_growth_warning": True,
+                    "exec_summary": combined_insights,
+                    "warning": []
+                }
+                
+                chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
+                
+                # Render chart using default trend chart layout
+                rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
+                viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
             
-            chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
-            
-            # Render chart using default trend chart layout
-            rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
-            
-            return SkillVisualization(title=f"Supporting Metrics Trends - {current_year}", layout=rendered)
+            return viz_list
         else:
             print("DEBUG: No charts generated from trend analysis")
             return None
