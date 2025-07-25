@@ -264,12 +264,6 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
             print(f"DEBUG: Not vs enabled metrics, returning standard metric_df")
             return metric_df
         
-        # For vs target metrics, reset the comparison columns
-        print(f"DEBUG: Resetting comparison columns for vs target metrics")
-        metric_df['prev'] = metric_df['curr']  # Set prev = curr to make diff = 0
-        metric_df['diff'] = 0
-        metric_df['growth'] = 0
-        
         print(f"DEBUG: Adding vs Target column for metrics: {metrics}")
         additional_filters = table_specific_filters.get('default', [])
         target_metrics = [f"target_{metric}" for metric in metrics]
@@ -281,6 +275,14 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
             print(f"DEBUG: Target data retrieved successfully")
             print(f"DEBUG: Target df shape: {target_df.shape}")
             print(f"DEBUG: Target df columns: {target_df.columns.tolist()}")
+
+            # For vs target metrics, set prev to target value and calculate difference
+            print(f"DEBUG: Setting prev column to target values for vs target metrics")
+            for metric in metrics:
+                metric_df.loc[metric, 'prev'] = target_df[f"target_{metric}"].iloc[0]
+                metric_df.loc[metric, 'diff'] = metric_df.loc[metric, 'curr'] - target_df[f"target_{metric}"].iloc[0]
+            
+            metric_df['growth'] = 0  # No growth calculation for vs target
 
             metric_df['vs Target'] = metric_df.apply(
                 lambda row: row['curr'] - target_df[f"target_{row.name}"].iloc[0], 
@@ -316,14 +318,7 @@ class SixtBreakoutDrivers(BreakoutDrivers):
         if not check_vs_enabled([metric]):
             return breakout_df
         
-        # For vs target metrics, reset the comparison columns
-        print(f"DEBUG: Resetting comparison columns for vs target breakouts")
-        breakout_df['prev'] = breakout_df['curr']  # Set prev = curr to make diff = 0
-        breakout_df['diff'] = 0
-        breakout_df['diff_pct'] = 0
-        breakout_df['rank_change'] = 0
-        
-        # Add vs Target column
+        # Add vs Target column and set target values
         print(f"DEBUG: Adding vs Target column for breakouts")
         additional_filters = table_specific_filters.get('default', [])
         target_metric = f"target_{metric}"
@@ -338,10 +333,20 @@ class SixtBreakoutDrivers(BreakoutDrivers):
             dfs.append(target_df)
         target_df = pd.concat(dfs)
 
-        breakout_df['vs Target'] = breakout_df.apply(
+        # For vs target metrics, set prev to target value and calculate difference
+        print(f"DEBUG: Setting prev column to target values for vs target breakouts")
+        breakout_df['prev'] = breakout_df.apply(
+            lambda row: target_df[target_df.index == row.name][f"target_{metric}"].iloc[0], 
+            axis=1
+        )
+        breakout_df['diff'] = breakout_df.apply(
             lambda row: row['curr'] - target_df[target_df.index == row.name][f"target_{metric}"].iloc[0], 
             axis=1
         )
+        breakout_df['diff_pct'] = 0  # No growth percentage for vs target
+        breakout_df['rank_change'] = 0
+
+        breakout_df['vs Target'] = breakout_df['diff']  # Same as diff column
 
         return breakout_df
 
@@ -385,9 +390,13 @@ class SixtMetricDriver(DriverAnalysis):
                 lambda row: self.helper.get_formatted_num(row["impact"], self.mta.impact_format), axis=1
             )
 
-        # rename columns
-        metric_df = metric_df.rename(
-            columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
+        # rename columns - use different label for vs target metrics
+        if check_vs_enabled([env.metric]):
+            metric_df = metric_df.rename(
+                columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
+        else:
+            metric_df = metric_df.rename(
+                columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
         
         metric_df = metric_df.reset_index()
 
@@ -447,10 +456,16 @@ class SixtMetricDriver(DriverAnalysis):
             b_df = b_df.rename(columns={'dim_value': dim})
             b_df = b_df[[dim] + breakout_required_columns]
 
-            # rename columns
-            b_df = b_df.rename(
-                columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'diff_pct': '% Growth',
-                         'rank_change': 'Rank Change'})
+            # rename columns - use different label for vs target metrics
+            # For breakouts, we can check if any vs Target column exists
+            if 'vs Target' in b_df.columns:
+                b_df = b_df.rename(
+                    columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'diff_pct': '% Growth',
+                             'rank_change': 'Rank Change'})
+            else:
+                b_df = b_df.rename(
+                    columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'diff_pct': '% Growth',
+                             'rank_change': 'Rank Change'})
             breakout_dfs[viz_name] = b_df
 
         return {"viz_metric_df": metric_df, "viz_breakout_dfs": breakout_dfs}
