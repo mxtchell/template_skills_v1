@@ -341,6 +341,22 @@ def create_trend_chart(env, insights=None):
             combined_insights = insights if insights else ""
             
             print(f"**tt DEBUG: Creating {len(chart_source)} visualizations from chart_source")
+            print(f"**tt DEBUG: chart_source type: {type(chart_source)}")
+            
+            # Debug the actual chart variables
+            for chart_name, chart_data in chart_source.items():
+                print(f"**tt DEBUG: Chart '{chart_name}' data type: {type(chart_data)}")
+                if isinstance(chart_data, dict):
+                    print(f"**tt DEBUG: Chart '{chart_name}' keys: {list(chart_data.keys())}")
+                    if 'chart_vars' in chart_data:
+                        chart_vars = chart_data['chart_vars']
+                        print(f"**tt DEBUG: Chart vars keys: {list(chart_vars.keys())}")
+                        # Look for series data specifically
+                        for key, value in chart_vars.items():
+                            if 'series' in key.lower() or 'metric' in key.lower():
+                                print(f"**tt DEBUG: {key}: {str(value)[:200]}...")
+                else:
+                    print(f"**tt DEBUG: Chart '{chart_name}' direct data: {str(chart_data)[:200]}...")
             
             # Create a visualization for each chart type
             for i, (chart_name, chart_data) in enumerate(chart_source.items()):
@@ -363,8 +379,19 @@ def create_trend_chart(env, insights=None):
                 chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
                 chart_vars["hide_growth_chart"] = False  # ENSURE growth charts are enabled
                 
+                # Debug what we're passing to the layout
+                layout_vars = {**tab_vars, **chart_vars}
+                print(f"**tt DEBUG: Layout variables being passed to wire_layout:")
+                for key, value in layout_vars.items():
+                    if isinstance(value, (list, dict)):
+                        print(f"**tt DEBUG:   {key}: {type(value)} with {len(value) if hasattr(value, '__len__') else 'N/A'} items") 
+                        if 'series' in key.lower():
+                            print(f"**tt DEBUG:     Series data: {str(value)[:500]}...")
+                    else:
+                        print(f"**tt DEBUG:   {key}: {str(value)[:100]}...")
+                
                 # Render chart using default trend chart layout
-                rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
+                rendered = wire_layout(json.loads(default_trend_chart_layout), layout_vars)
                 viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
                 print(f"**tt DEBUG: Successfully created visualization for {chart_name}")
             
