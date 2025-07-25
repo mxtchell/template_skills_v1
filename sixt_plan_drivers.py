@@ -9,7 +9,7 @@ from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
 
 from ar_analytics import ArUtils
-from ar_analytics.defaults import metric_driver_analysis_config, default_table_layout, get_table_layout_vars
+from ar_analytics.defaults import default_table_layout, get_table_layout_vars
 from ar_analytics.driver_analysis import DriverAnalysis, DriverAnalysisTemplateParameterSetup
 from ar_analytics.helpers.utils import Connector, exit_with_status, NO_LIMIT_N, fmt_sign_num
 from ar_analytics.metric_tree import MetricTreeAnalysis
@@ -323,7 +323,8 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
                     { "col": period_col, "op": "BETWEEN", "val": f"'{start_date}' AND '{end_date}'"}
                 )
 
-            if comp_start_date and comp_end_date:
+            # Only add comparison period filters if NOT using vs target comparison
+            if comp_start_date and comp_end_date and not check_vs_enabled([env.metric]):
                 period_filters.append(
                     { "col": period_col, "op": "BETWEEN", "val": f"'{comp_start_date}' AND '{comp_end_date}'" }
                 )
@@ -367,7 +368,8 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
             print("period_filters")
             print(period_filters)
 
-            if str(env.growth_type).lower() != "none" and not date_labels.get("compare_start_date"):
+            # Skip Y/Y comparison validation for vs target metrics
+            if str(env.growth_type).lower() != "none" and not date_labels.get("compare_start_date") and not check_vs_enabled([env.metric]):
                 msg = ["Please inform the user that the analysis cannot run because data is unavailable for the required year-over-year (Y/Y) comparison period."]
                 msg.append(f"Data is only available from {date_labels.get('data_start_date')} to {date_labels.get('data_end_date')}.")
                 msg.append(f"Ask the user to modify the date range to ensure it aligns with an available {env.growth_type} comparison period within this timeframe.")
@@ -395,9 +397,11 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
             else:
                 driver_analysis_parameters["limit_n"] = self.convert_to_int(env.limit_n)
 
-        # set growth type
-
-        driver_analysis_parameters["growth_type"] = env.growth_type
+        # set growth type - default to None for vs target metrics
+        if check_vs_enabled([env.metric]):
+            driver_analysis_parameters["growth_type"] = "None"
+        else:
+            driver_analysis_parameters["growth_type"] = env.growth_type
 
         # use sparklines
 
@@ -426,7 +430,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
         elif check_vs_enabled([env.metric]):
             pills["comparison"] = "vs Target"
         if hasattr(env, "growth_type"):
-            if str(env.growth_type).lower() in ["p/p", "y/y"]:
+            if str(env.growth_type).lower() in ["p/p", "y/y"] and not check_vs_enabled([env.metric]):
                 pills["growth_type"] = f"Growth Type: {str(env.growth_type)}"
 
         driver_analysis_parameters["ParameterDisplayDescription"] = pills
@@ -436,13 +440,13 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
 # MAIN SKILL
 @skill(
-    name=metric_driver_analysis_config.name,
-    llm_name=metric_driver_analysis_config.llm_name,
-    description=metric_driver_analysis_config.description,
-    capabilities=metric_driver_analysis_config.capabilities,
-    limitations=metric_driver_analysis_config.limitations,
-    example_questions="Show me advanced driver analysis for sales vs budget by quarter",
-    parameter_guidance=metric_driver_analysis_config.parameter_guidance,
+    name="Sixt Plan Drivers",
+    llm_name="sixt_plan_driver_analysis",
+    description="Analyzes DDR performance drivers by comparing actual metrics against targets. Shows variance, percentage differences, and performance indicators across different dimensions for Sixt car rental data.",
+    capabilities="Specialized for DDR1 and DDR2 vs target analysis. Provides variance analysis, percentage differences, and performance breakdowns by dimensions like branch, region, product. Supports vs target comparison for damage detection metrics.",
+    limitations="Optimized for DDR metrics with target comparison. For other metrics or time-based growth analysis, use standard metric drivers.",
+    example_questions="What's driving DDR1 performance vs target by branch? How did DDR2 perform against plan by region? Show me variance between actual damage detection and target by month.",
+    parameter_guidance="Select DDR1 or DDR2 for analysis. Specify time periods and optional breakout dimensions. Focus on performance vs target/plan comparison for damage detection metrics.",
     parameters=[
         SkillParameter(
             name="periods",
@@ -453,7 +457,9 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
         SkillParameter(
             name="metric",
             is_multi=False,
-            constrained_to="metrics"
+            constrained_to="metrics",
+            description="The metric to analyze (typically DDR1 or DDR2 for vs target analysis)",
+            required=True
         ),
         SkillParameter(
             name="metric_group",
@@ -476,7 +482,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
             name="growth_type",
             constrained_to=None,
             constrained_values=["Y/Y", "P/P"],
-            description="Growth type either Y/Y or P/P",
+            description="Growth type either Y/Y or P/P (ignored for vs target analysis)",
             default_value="Y/Y"
         ),
         SkillParameter(
@@ -491,13 +497,13 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
             name="max_prompt",
             parameter_type="prompt",
             description="Prompt being used for max response.",
-            default_value=metric_driver_analysis_config.max_prompt
+            default_value="Answer user question in 30 words or less using following facts:\n{{facts}}"
         ),
         SkillParameter(
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value=metric_driver_analysis_config.insight_prompt
+            default_value="Write a short headline followed by a 60 word or less paragraph about using facts below.\nUse the structure from the 2 examples below to learn how I typically write summary.\nBase your summary solely on the provided facts, avoiding assumptions or judgments.\nEnsure clarity and accuracy.\nUse markdown formatting for a structured and clear presentation.\n###\nPlease use the following as an example of good insights\nExample 1:\nFacts:\n[{'title': 'Peer Facts', 'facts': [{'level': 'Brand', 'competitor': 'PRIVATE LABEL', 'Sales': '$606,077,860.02', 'change': '$61,256,314.08', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 61256314.07799971}, {'level': 'Brand', 'competitor': 'GIOVANNI RANA', 'Sales': '$171,591,436.24', 'change': '$53,770,879.92', 'rank_curr': '3', 'rank_change': '+1', 'abs_diff': 53770879.92400019}, {'level': 'Brand', 'competitor': 'BARILLA', 'Sales': '$570,348,946.24', 'change': '$50,774,602.17', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 50774602.167000055}, {'level': 'Manufacturer', 'competitor': 'PRIVATE LABEL', 'Sales': '$606,077,860.02', 'change': '$61,256,314.08', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 61256314.07799971}, {'level': 'Manufacturer', 'competitor': 'PASTIFICIO RANA S.P.A.', 'Sales': '$171,591,436.24', 'change': '$53,770,879.92', 'rank_curr': '4', 'rank_change': '+1', 'abs_diff': 53770879.92400019}, {'level': 'Manufacturer', 'competitor': 'BARILLA G & R F.LLI S.P.A.', 'Sales': '$570,445,950.79', 'change': '$50,797,040.32', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 50797040.32000005}]}}, {'title': 'Breakout Facts', 'facts': []}, {'title': 'Subject Facts', 'facts': [{'metric': 'Sales', 'curr': '$2,344,866,829.62', 'prev': '$2,006,377,582.82', 'diff': '$338,489,246.79', 'growth': '16.87%', 'parent_metric': None, 'depth': 0}]}}, {'title': 'Notes about this answer', 'facts': [{'Note to the assistant:': 'The analysis was run using only these filters: Category = pasta'}, {'Note to the assistant:': 'Analysis ran for metric Sales filtered to pasta for Category for the period January 2022 to December 2022 vs January 2021 to December 2021'}]}, {'title': 'Metric Tree Facts', 'facts': [{'metric': 'Sales', 'curr': '$2,344,866,829.62', 'prev': '$2,006,377,582.82', 'diff': '$338,489,246.79', 'growth': '16.87%', 'parent_metric': None, 'depth': 0}, {'metric': 'ACV', 'curr': '3,614,315.41', 'prev': '3,919,522.06', 'diff': '-305,206.66', 'growth': '-7.79%', 'parent_metric': 'Sales', 'depth': 1}, {'metric': 'Volume', 'curr': '1,381,319,805.77', 'prev': '1,267,565,899.76', 'diff': '113,753,906.00', 'growth': '8.97%', 'parent_metric': 'Sales', 'depth': 1}]}]}.\nsummary:\n## Pasta Sales Analysis ##\n**Performance Overview:**\nThe pasta category has experienced significant increase in sales (+16.87% ), rising from $2,006,377,582.82 to $2,344,866,829.62..\n**Driving Metrics:**\nSales growth was driven by volume increase (+8.79%), while ACV declined by 7.79%, from 3,919,522.06 to 3,614,315.41.\n**Key Drivers:**\nPRIVATE LABEL led the market with $606,077,860.02 in sales, up by $61,256,314.08. GIOVANNI RANA and BARILLA followed, with sales increases of $53,770,879.92 and $50,774,602.17, respectively.\n###\nExample 2:\nFacts:\n[{'title': 'Peer Facts', 'facts': [{'level': 'Brand', 'competitor': 'PRIVATE LABEL', 'Sales': '$152,807,608.00', 'change': '-$453,271,875.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 453271875.0}, {'level': 'Brand', 'competitor': 'BARILLA', 'Sales': '$146,567,322.00', 'change': '-$423,781,691.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 423781691.0}, {'level': 'Brand', 'competitor': 'GIOVANNI RANA', 'Sales': '$41,702,602.00', 'change': '-$129,888,947.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 129888947.0}]}}, {'title': 'Breakout Facts', 'facts': [{'level': 'Base Size', 'driver': '16 OUNCE', 'Sales': '$101,274,375.00', 'change': '-$306,205,018.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 306205018.0}, {'level': 'Base Size', 'driver': '12 OUNCE', 'Sales': '$24,372,801.00', 'change': '-$61,157,379.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 61157379.0}, {'level': 'Base Size', 'driver': '14.5 OUNCE', 'Sales': '$7,007,526.00', 'change': '-$16,631,014.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 16631014.0}, {'level': 'Manufacturer', 'driver': 'BARILLA G & R F.LLI S.P.A.', 'Sales': '$146,567,322.00', 'change': '-$423,781,691.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 423781691.0}, {'level': 'Segment', 'driver': 'SHORT CUT', 'Sales': '$61,985,296.00', 'change': '-$185,709,862.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 185709862.0}, {'level': 'Segment', 'driver': 'LONG CUT', 'Sales': '$61,464,163.00', 'change': '-$177,343,077.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 177343077.0}, {'level': 'Segment', 'driver': 'BAKING', 'Sales': '$12,497,475.00', 'change': '-$34,233,200.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 34233200.0}, {'level': 'Sub-Category', 'driver': 'SEMOLINA', 'Sales': '$117,014,563.00', 'change': '-$343,972,411.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 343972411.0}, {'level': 'Sub-Category', 'driver': 'MULTIGRAIN', 'Sales': '$12,526,184.00', 'change': '-$31,841,841.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 31841841.0}, {'level': 'Sub-Category', 'driver': 'REMAINING GRAIN', 'Sales': '$6,304,828.00', 'change': '-$18,091,439.00', 'rank_curr': '4', 'rank_change': '-1', 'abs_diff': 18091439.0}]}}, {'title': 'Subject Facts', 'facts': [{'metric': 'Sales', 'curr': '$146,567,322.00', 'prev': '$570,349,013.00', 'diff': '-$423,781,691.00', 'growth': '-74.30%', 'parent_metric': None, 'depth': 0}]}}, {'title': 'Notes about this answer', 'facts': [{'Note to the assistant:': 'The analysis was run using only these filters: Brand = barilla, Category = pasta, Country = united states'}]}, {'title': 'Metric Tree Facts', 'facts': [{'metric': 'Sales', 'curr': '$146,567,322.00', 'prev': '$570,349,013.00', 'diff': '-$423,781,691.00', 'growth': '-74.30%', 'parent_metric': None, 'depth': 0}, {'metric': 'Volume', 'curr': '90,622,621.00', 'prev': '353,012,269.00', 'diff': '-262,389,648.00', 'growth': '-74.33%', 'parent_metric': 'Sales', 'depth': 1}, {'metric': 'Units', 'curr': '89,526,220.00', 'prev': '345,124,705.00', 'diff': '-255,598,485.00', 'growth': '-74.06%', 'parent_metric': 'Sales', 'depth': 1}]}]}.\nsummary:\n## Barilla Sales Analysis ##\n**Performance Overview:**\nBarilla's sales witnessed a -74.30% decline, dropping from $570,349,013.00 to $146,567,322.00. This contraction is slightly below the benchmark set by competitors like PRIVATE LABEL and GIOVANNI RANA,\n**Driving Metrics:**\nSales for Barilla plummeted by -74.30%, driven by substantial declines in volume (-74.33%, from 353,012,269 to 90,622,621) and units (-74.06%, from 345,124,705 to 89,526,220).\n**Key Drivers:**\nBase Size adjustments with the 16 OUNCE package experiencing the most significant sales drop of $306,205,018.00.\nManufacturer insights reveal Barilla G & R F.LLI S.P.A. as the most affected, paralleling the brand's own sales contraction.\nSegment analysis points out the SHORT CUT and LONG CUT as leading categories in sales decline, with SHORT CUT experiencing a $185,709,862.00 drop.\nSub-Category trends show SEMOLINA and MULTIGRAIN as heavily impacted, with SEMOLINA sales down by $343,972,411.00.\n###\nFacts:\n{{facts}}\nSummary:"
         ),
         SkillParameter(
             name="table_viz_layout",
@@ -507,7 +513,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
         )
     ]
 )
-def simple_metric_driver(parameters: SkillInput):
+def sixt_plan_drivers(parameters: SkillInput):
     param_dict = {"periods": [], "metric": "", "metric_group": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
     print(f"Skill received following parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
@@ -584,16 +590,16 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
     return viz_list, insights, max_response_prompt, export_data
 
 if __name__ == '__main__':
-    skill_input: SkillInput = simple_metric_driver.create_input(
+    skill_input: SkillInput = sixt_plan_drivers.create_input(
         arguments={
-  "breakouts": [
-    "brand"
-  ],
-  "metric": "sales",
-  "periods": [
-    "2022",
-    "2023"
-  ]
-})
-    out = simple_metric_driver(skill_input)
-    preview_skill(simple_metric_driver, out)
+            "breakouts": [
+                "brnc_name"
+            ],
+            "metric": "ddr1",
+            "periods": [
+                "2019"
+            ]
+        }
+    )
+    out = sixt_plan_drivers(skill_input)
+    preview_skill(sixt_plan_drivers, out)
