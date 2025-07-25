@@ -143,7 +143,7 @@ def sixt_plan_drivers(parameters: SkillInput):
     # Add trend chart for vs target metrics
     if check_vs_enabled([env.metric]):
         print(f"DEBUG: Creating trend chart for vs target metric")
-        trend_viz = create_trend_chart(env)
+        trend_viz = create_trend_chart(env, insights)
         if trend_viz:
             viz.append(trend_viz)
 
@@ -156,7 +156,7 @@ def sixt_plan_drivers(parameters: SkillInput):
         export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
     )
 
-def create_trend_chart(env):
+def create_trend_chart(env, insights=None):
     """Create monthly trend chart for supporting metrics using AdvanceTrend"""
     print(f"DEBUG: Creating trend chart with periods: {env.periods}")
     
@@ -218,7 +218,7 @@ def create_trend_chart(env):
                 "headline": f"Supporting Metrics Trends - {year}",
                 "sub_headline": "Monthly trend analysis of key operational metrics",
                 "hide_growth_warning": True,
-                "exec_summary": "",
+                "exec_summary": insights if insights else "",
                 "warning": []
             }
             
