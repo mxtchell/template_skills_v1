@@ -438,7 +438,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
     description=metric_driver_analysis_config.description,
     capabilities=metric_driver_analysis_config.capabilities,
     limitations=metric_driver_analysis_config.limitations,
-    example_questions=metric_driver_analysis_config.example_questions,
+    example_questions="Show me advanced driver analysis for sales vs budget by quarter",
     parameter_guidance=metric_driver_analysis_config.parameter_guidance,
     parameters=[
         SkillParameter(
