@@ -138,7 +138,7 @@ def sixt_plan_drivers(parameters: SkillInput):
     print(f"DEBUG: About to run driver analysis")
     _ = env.da.run_from_env()
 
-    optional_columns = ["vs Target"] if check_vs_enabled([env.metric]) else []
+    optional_columns = []  # vs Target is handled by renaming diff column
     results = env.da.get_display_tables(optional_columns=optional_columns)
 
     tables = {
