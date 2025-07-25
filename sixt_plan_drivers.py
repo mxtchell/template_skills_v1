@@ -248,10 +248,21 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
     
     def _get_metric_growth(self, table, metrics, period_filters, query_filters, table_specific_filters, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}):
         """Override to handle vs target metrics differently"""
-        print(f"DEBUG: SixtMetricTreeAnalysis._get_metric_growth called with metrics: {metrics}")
+        print(f"DEBUG: SixtMetricTreeAnalysis._get_metric_growth called")
+        print(f"DEBUG: metrics type: {type(metrics)}, metrics: {metrics}")
         print(f"DEBUG: period_filters length: {len(period_filters)}")
         
-        if check_vs_enabled(metrics):
+        # Extract metric names from the metric properties
+        metric_names = []
+        if isinstance(metrics, list) and len(metrics) > 0:
+            if isinstance(metrics[0], dict):
+                metric_names = [m['name'] for m in metrics]
+            else:
+                metric_names = metrics
+        
+        print(f"DEBUG: Extracted metric names: {metric_names}")
+        
+        if check_vs_enabled(metric_names):
             print(f"DEBUG: VS target metrics detected, using special handling")
             # For vs target metrics, we only need current period data
             additional_filters = table_specific_filters.get('default', [])
@@ -260,8 +271,13 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
             df_curr = self.pull_data_func(metrics=metrics, filters=query_filters+additional_filters+[period_filters[0]])
             print(f"DEBUG: Current period data retrieved: {df_curr.shape}")
             
-            # Create metric_df with only current values (no prev, diff, growth)
-            metric_df = pd.DataFrame(index=metrics)
+            # Create metric_df with appropriate index
+            if isinstance(metrics, list) and len(metrics) > 0 and isinstance(metrics[0], dict):
+                # Use metric names as index
+                metric_df = pd.DataFrame(index=metric_names)
+            else:
+                metric_df = pd.DataFrame(index=metrics)
+            
             metric_df['curr'] = df_curr.iloc[0]
             metric_df['prev'] = 0  # No previous period for vs target
             metric_df['diff'] = 0  # No difference calculation
@@ -269,16 +285,27 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
             
             # Add empty sparklines if needed
             if include_sparklines:
-                metric_df['sparkline'] = [[] for _ in metrics]
+                metric_df['sparkline'] = [[] for _ in metric_df.index]
             
             print(f"DEBUG: Created metric_df for vs target metrics")
             return metric_df
         else:
             # For non-vs target metrics, use the parent implementation
             print(f"DEBUG: Using standard metric growth calculation")
-            return super()._get_metric_growth(table, metrics, period_filters, query_filters, table_specific_filters, 
-                                            include_sparklines, two_year_filter, period_col_granularity, 
-                                            view, growth_type, metric_props)
+            # Call parent with keyword arguments to be safe
+            return super()._get_metric_growth(
+                table=table,
+                metrics=metrics, 
+                period_filters=period_filters, 
+                query_filters=query_filters, 
+                table_specific_filters=table_specific_filters, 
+                include_sparklines=include_sparklines, 
+                two_year_filter=two_year_filter, 
+                period_col_granularity=period_col_granularity, 
+                view=view, 
+                growth_type=growth_type, 
+                metric_props=metric_props
+            )
     
     def run(self, table, metrics, period_filters, query_filters=[], table_specific_filters={}, driver_metrics=[], view="", include_sparklines=True, two_year_filter=None, period_col_granularity='day', metric_props={}, add_impacts=False, impact_formulas={}):
         print(f"DEBUG: SixtMetricTreeAnalysis.run called with metrics: {metrics}")
