@@ -779,7 +779,7 @@ class SixtMetricDriver(DriverAnalysis):
 
         # rename columns - use different label for vs target metrics
         # Check if this is vs target analysis using check_vs_enabled function
-        if check_vs_enabled([self.metrics[0]] if self.metrics else []):
+        if check_vs_enabled([self.metric] if hasattr(self, 'metric') and self.metric else []):
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
         else:
@@ -846,7 +846,7 @@ class SixtMetricDriver(DriverAnalysis):
 
             # rename columns - use different label for vs target metrics
             # For breakouts, check if this is vs target analysis using check_vs_enabled function
-            if check_vs_enabled([self.metrics[0]] if self.metrics else []):
+            if check_vs_enabled([self.metric] if hasattr(self, 'metric') and self.metric else []):
                 b_df = b_df.rename(
                     columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'diff_pct': '% Growth',
                              'rank_change': 'Rank Change'})
