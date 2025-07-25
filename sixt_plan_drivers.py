@@ -142,13 +142,18 @@ def sixt_plan_drivers(parameters: SkillInput):
 
     # Add trend charts for vs target metrics
     if check_vs_enabled([env.metric]):
-        print(f"DEBUG: Creating trend charts for vs target metric")
+        print(f"**tt DEBUG: Creating trend charts for vs target metric")
         trend_vizs = create_trend_chart(env, insights)
+        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_vizs)}")
         if trend_vizs:
             if isinstance(trend_vizs, list):
+                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
                 viz.extend(trend_vizs)  # Add multiple charts
             else:
+                print(f"**tt DEBUG: Adding single trend chart to viz list")
                 viz.append(trend_vizs)  # Add single chart (fallback)
+        else:
+            print(f"**tt DEBUG: No trend charts returned")
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -319,6 +324,9 @@ def create_trend_chart(env, insights=None):
         # Get chart variables for all chart types
         charts = trend_analysis.get_dynamic_layout_chart_vars()
         
+        print(f"**tt DEBUG: Number of charts generated: {len(charts) if charts else 0}")
+        print(f"**tt DEBUG: Chart names: {list(charts.keys()) if charts else 'None'}")
+        
         # Create multiple visualizations for all chart types (absolute, growth, difference)
         if charts:
             viz_list = []
@@ -326,8 +334,12 @@ def create_trend_chart(env, insights=None):
             # Prepare base variables for chart layout
             combined_insights = insights if insights else ""
             
+            print(f"**tt DEBUG: Creating {len(charts)} visualizations")
+            
             # Create a visualization for each chart type
-            for chart_name, chart_vars in charts.items():
+            for i, (chart_name, chart_vars) in enumerate(charts.items()):
+                print(f"**tt DEBUG: Processing chart {i+1}: {chart_name}")
+                
                 tab_vars = {
                     "headline": f"Supporting Metrics Trends - {current_year}",
                     "sub_headline": f"Monthly trend analysis - {chart_name}",
@@ -341,7 +353,9 @@ def create_trend_chart(env, insights=None):
                 # Render chart using default trend chart layout
                 rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
                 viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
+                print(f"**tt DEBUG: Successfully created visualization for {chart_name}")
             
+            print(f"**tt DEBUG: Returning {len(viz_list)} visualizations")
             return viz_list
         else:
             print("DEBUG: No charts generated from trend analysis")
