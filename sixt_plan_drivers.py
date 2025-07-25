@@ -132,22 +132,22 @@ Summary:"""
 )
 def sixt_plan_drivers(parameters: SkillInput):
     param_dict = {"periods": [], "metric": "", "metric_group": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
-    print(f"DEBUG: sixt_plan_drivers received parameters: {parameters.arguments}")
+    # Received skill parameters
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
             param_dict[key] = getattr(parameters.arguments, key)
 
-    print(f"DEBUG: Processed param_dict: {param_dict}")
+    # Processed parameters
     env = SimpleNamespace(**param_dict)
     
-    print(f"DEBUG: About to run SixtMetricDriverTemplateParameterSetup with metric: {env.metric}")
+    # Running template parameter setup
     SixtMetricDriverTemplateParameterSetup(env=env)
     
-    print(f"DEBUG: Creating SixtMetricDriver from env")
+    # Creating SixtMetricDriver
     env.da = SixtMetricDriver.from_env(env=env)
 
-    print(f"DEBUG: About to run driver analysis")
+    # Running driver analysis
     _ = env.da.run_from_env()
 
     optional_columns = []  # vs Target is handled by renaming diff column
@@ -166,16 +166,14 @@ def sixt_plan_drivers(parameters: SkillInput):
     try:
         supporting_metrics_df = create_supporting_metrics_analysis(env)
         if supporting_metrics_df is not None:
-            print(f"DEBUG: Supporting metrics DF created with shape: {supporting_metrics_df.shape}")
-            print(f"DEBUG: Supporting metrics DF columns: {supporting_metrics_df.columns.tolist()}")
-            print(f"DEBUG: Supporting metrics DF preview: {supporting_metrics_df.head().to_dict()}")
+            # Supporting metrics DF created successfully
+            # Supporting metrics DF added to insights
             insights_dfs.append(supporting_metrics_df)
         else:
-            print("DEBUG: Supporting metrics DF is None")
+            # Supporting metrics DF is None
     except Exception as e:
-        print(f"DEBUG: Error creating supporting metrics analysis: {e}")
-        import traceback
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        # Error creating supporting metrics analysis
+        pass
 
     warning_messages = env.da.get_warning_messages()
 
@@ -183,7 +181,7 @@ def sixt_plan_drivers(parameters: SkillInput):
     trend_vizs = []
     if check_vs_enabled([env.metric]):
         print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
-        trend_result = create_trend_chart(env, insights)
+        trend_result = create_trend_chart(env)
         print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
         
         # Handle both old format (just charts) and new format (charts, df)
@@ -286,7 +284,7 @@ def create_supporting_metrics_analysis(env):
         # Use the Connector to execute SQL instead of sql_to_df
         connector = env.da.sql_exec if hasattr(env.da, 'sql_exec') else None
         if not connector:
-            print("DEBUG: No SQL connector available")
+            # No SQL connector available
             return None
         
         # Get the period filter from environment
@@ -329,7 +327,7 @@ def create_supporting_metrics_analysis(env):
         WHERE {where_clause}
         """
         
-        print(f"DEBUG: Supporting metrics SQL: {sql_query}")
+        # print(f"DEBUG: Supporting metrics SQL: {sql_query}")
         df = connector.run_sql(sql_query)
         
         if df.empty:
@@ -381,8 +379,8 @@ def create_supporting_metrics_analysis(env):
         
     except Exception as e:
         import traceback
-        print(f"DEBUG: Error in create_supporting_metrics_analysis: {e}")
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        # Error in create_supporting_metrics_analysis
+        pass
         return None
 
 def generate_correlation_insights(yearly_averages, current_year, previous_year):
@@ -435,7 +433,7 @@ def generate_correlation_insights(yearly_averages, current_year, previous_year):
 
 def create_trend_chart(env, insights=None):
     """Create monthly trend chart for supporting metrics using AdvanceTrend"""
-    print(f"DEBUG: Creating trend chart with periods: {env.periods}")
+    # Creating trend chart with periods
     
     # Extract year from periods - use first period and get full year
     if env.periods and len(env.periods) > 0:
@@ -569,7 +567,8 @@ def create_trend_chart(env, insights=None):
             return None, None
             
     except Exception as e:
-        print(f"DEBUG: Error creating trend chart: {e}")
+        # Error creating trend chart
+        pass
         return None, None
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
@@ -693,37 +692,33 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
         super().__init__(sql_exec, df_provider, sp)
     
     def run(self, table, metrics, period_filters, query_filters=[], table_specific_filters={}, driver_metrics=[], view="", include_sparklines=True, two_year_filter=None, period_col_granularity='day', metric_props={}, add_impacts=False, impact_formulas={}):
-        print(f"DEBUG: SixtMetricTreeAnalysis.run called with metrics: {metrics}")
-        print(f"DEBUG: period_filters: {period_filters}")
-        print(f"DEBUG: check_vs_enabled result: {check_vs_enabled(metrics)}")
+        # Running SixtMetricTreeAnalysis with metrics
         
         # For vs target metrics, ensure we have two period filters to prevent IndexError
         modified_period_filters = period_filters
         if check_vs_enabled(metrics) and len(period_filters) == 1:
-            print(f"DEBUG: Adding duplicate period filter for vs target metrics")
+            # Adding duplicate period filter for vs target metrics
             # Duplicate the current period filter to prevent IndexError
             modified_period_filters = period_filters + period_filters
         
         metric_df = super().run(table, metrics, modified_period_filters, query_filters, table_specific_filters, driver_metrics, view, include_sparklines, two_year_filter, period_col_granularity, metric_props, add_impacts, impact_formulas)
         
         if not check_vs_enabled(metrics):
-            print(f"DEBUG: Not vs enabled metrics, returning standard metric_df")
+            # Not vs enabled metrics, returning standard metric_df
             return metric_df
         
-        print(f"DEBUG: Adding vs Target column for metrics: {metrics}")
+        # Adding vs Target column for metrics
         additional_filters = table_specific_filters.get('default', [])
         target_metrics = [f"target_{metric}" for metric in metrics]
         target_metrics = [self.helper.get_metric_prop(m, metric_props) for m in target_metrics]
-        print(f"DEBUG: Target metrics to pull: {target_metrics}")
+        # Pulling target metrics
         
         try:
             target_df = self.pull_data_func(metrics=target_metrics, filters=query_filters+additional_filters+[period_filters[0]])
-            print(f"DEBUG: Target data retrieved successfully")
-            print(f"DEBUG: Target df shape: {target_df.shape}")
-            print(f"DEBUG: Target df columns: {target_df.columns.tolist()}")
+            # Target data retrieved successfully
 
             # For vs target metrics, set prev to target value and calculate difference
-            print(f"DEBUG: Setting prev column to target values for vs target metrics")
+            # Setting prev column to target values
             for metric in metrics:
                 metric_df.loc[metric, 'prev'] = target_df[f"target_{metric}"].iloc[0]
                 metric_df.loc[metric, 'diff'] = metric_df.loc[metric, 'curr'] - target_df[f"target_{metric}"].iloc[0]
@@ -734,9 +729,9 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
                 axis=1
             )
 
-            print(f"DEBUG: Added vs Target column successfully")
+            # Added vs Target column successfully
         except Exception as e:
-            print(f"DEBUG: Error adding vs Target column: {e}")
+            # Error adding vs Target column
             raise
 
         return metric_df
@@ -750,12 +745,12 @@ class SixtBreakoutDrivers(BreakoutDrivers):
 
     def run(self, table, metric, breakouts, period_filters, query_filters=[], table_specific_filters={}, top_n=5, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}, dim_props={}):
         print(f"DEBUG: SixtBreakoutDrivers.run called with metric: {metric}")
-        print(f"DEBUG: period_filters length: {len(period_filters)}")
+        # Checking period filters
         
         # For vs target metrics, ensure we have two period filters to prevent IndexError
         modified_period_filters = period_filters
         if check_vs_enabled([metric]) and len(period_filters) == 1:
-            print(f"DEBUG: Adding duplicate period filter for vs target metric")
+            # Adding duplicate period filter for vs target metric
             # Duplicate the current period filter to prevent IndexError
             modified_period_filters = period_filters + period_filters
         
@@ -765,7 +760,7 @@ class SixtBreakoutDrivers(BreakoutDrivers):
             return breakout_df
         
         # Add vs Target column and set target values
-        print(f"DEBUG: Adding vs Target column for breakouts")
+        # Adding vs Target column for breakouts
         additional_filters = table_specific_filters.get('default', [])
         target_metric = f"target_{metric}"
         target_metric = self.helper.get_metric_prop(target_metric, metric_props)
@@ -780,7 +775,7 @@ class SixtBreakoutDrivers(BreakoutDrivers):
         target_df = pd.concat(dfs)
 
         # For vs target metrics, set prev to target value and calculate difference
-        print(f"DEBUG: Setting prev column to target values for vs target breakouts")
+        # Setting prev column to target values for vs target breakouts
         breakout_df['prev'] = breakout_df.apply(
             lambda row: target_df[target_df.index == row.name][f"target_{metric}"].iloc[0], 
             axis=1
@@ -842,18 +837,17 @@ class SixtMetricDriver(DriverAnalysis):
         # rename columns - use different label for vs target metrics
         # Check if this is vs target analysis using check_vs_enabled function
         current_metric = getattr(self, 'metric', None)
-        print(f"DEBUG: self.metric = {current_metric}")
-        print(f"DEBUG: check_vs_enabled result = {check_vs_enabled([current_metric] if current_metric else [])}")
-        print(f"DEBUG: VS_ENABLED_METRICS = {VS_ENABLED_METRICS}")
+        # print(f"DEBUG: self.metric = {current_metric}")
+        # print(f"DEBUG: check_vs_enabled result = {check_vs_enabled([current_metric] if current_metric else [])}")
+        # print(f"DEBUG: VS_ENABLED_METRICS = {VS_ENABLED_METRICS}")
         
         if check_vs_enabled([current_metric] if current_metric else []):
-            print("DEBUG: Using vs target column names")
-            print(f"DEBUG: Before rename - metric_df columns: {metric_df.columns.tolist()}")
+            # Using vs target column names
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
-            print(f"DEBUG: After rename - metric_df columns: {metric_df.columns.tolist()}")
+            # Renamed columns for vs target
         else:
-            print("DEBUG: Using standard column names")
+            # Using standard column names
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
         
@@ -925,7 +919,7 @@ class SixtMetricDriver(DriverAnalysis):
                 if 'vs Target' in b_df.columns:
                     vs_target_cols = [col for col in b_df.columns if col == 'vs Target']
                     if len(vs_target_cols) > 1:
-                        print(f"DEBUG: Found {len(vs_target_cols)} duplicate 'vs Target' columns, keeping first")
+                        # Found duplicate 'vs Target' columns, keeping first
                         b_df = b_df.loc[:, ~b_df.columns.duplicated()]
             else:
                 b_df = b_df.rename(
@@ -1010,7 +1004,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
             # Only add comparison period filters if NOT using vs target comparison
             if comp_start_date and comp_end_date and not check_vs_enabled([env.metric]):
-                print(f"DEBUG: Adding comparison period filter for non-vs-target metric")
+                # Adding comparison period filter for non-vs-target metric
                 period_filters.append(
                     { "col": period_col, "op": "BETWEEN", "val": f"'{comp_start_date}' AND '{comp_end_date}'" }
                 )
@@ -1026,7 +1020,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
                 elif self.is_date_range_partially_out_of_bounds(comp_start_date, comp_end_date):
                     compare_date_warning_msg = "Data is only avaiable for partial comparison period. This gap might impact the analysis results and insights."
             elif check_vs_enabled([env.metric]):
-                print(f"DEBUG: Skipping comparison period for vs target metric: {env.metric}")
+                # Skipping comparison period for vs target metric
                 comp_start_date = None
                 comp_end_date = None
 
@@ -1089,7 +1083,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
         # set growth type - default to None for vs target metrics
         if check_vs_enabled([env.metric]):
-            print(f"DEBUG: Setting growth_type to None for vs target metric: {env.metric}")
+            # Setting growth_type to None for vs target metric
             driver_analysis_parameters["growth_type"] = "None"
             env.growth_type = "None"  # Also set on env to prevent comparison period logic
         else:
