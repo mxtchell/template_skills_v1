@@ -87,7 +87,28 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-            default_value="Write a short headline followed by a 60 word or less paragraph about using facts below.\nUse the structure from the 2 examples below to learn how I typically write summary.\nBase your summary solely on the provided facts, avoiding assumptions or judgments.\nEnsure clarity and accuracy.\nUse markdown formatting for a structured and clear presentation.\n###\nPlease use the following as an example of good insights\nExample 1:\nFacts:\n[{'title': 'Peer Facts', 'facts': [{'level': 'Brand', 'competitor': 'PRIVATE LABEL', 'Sales': '$606,077,860.02', 'change': '$61,256,314.08', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 61256314.07799971}, {'level': 'Brand', 'competitor': 'GIOVANNI RANA', 'Sales': '$171,591,436.24', 'change': '$53,770,879.92', 'rank_curr': '3', 'rank_change': '+1', 'abs_diff': 53770879.92400019}, {'level': 'Brand', 'competitor': 'BARILLA', 'Sales': '$570,348,946.24', 'change': '$50,774,602.17', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 50774602.167000055}, {'level': 'Manufacturer', 'competitor': 'PRIVATE LABEL', 'Sales': '$606,077,860.02', 'change': '$61,256,314.08', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 61256314.07799971}, {'level': 'Manufacturer', 'competitor': 'PASTIFICIO RANA S.P.A.', 'Sales': '$171,591,436.24', 'change': '$53,770,879.92', 'rank_curr': '4', 'rank_change': '+1', 'abs_diff': 53770879.92400019}, {'level': 'Manufacturer', 'competitor': 'BARILLA G & R F.LLI S.P.A.', 'Sales': '$570,445,950.79', 'change': '$50,797,040.32', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 50797040.32000005}]}}, {'title': 'Breakout Facts', 'facts': []}, {'title': 'Subject Facts', 'facts': [{'metric': 'Sales', 'curr': '$2,344,866,829.62', 'prev': '$2,006,377,582.82', 'diff': '$338,489,246.79', 'growth': '16.87%', 'parent_metric': None, 'depth': 0}]}}, {'title': 'Notes about this answer', 'facts': [{'Note to the assistant:': 'The analysis was run using only these filters: Category = pasta'}, {'Note to the assistant:': 'Analysis ran for metric Sales filtered to pasta for Category for the period January 2022 to December 2022 vs January 2021 to December 2021'}]}, {'title': 'Metric Tree Facts', 'facts': [{'metric': 'Sales', 'curr': '$2,344,866,829.62', 'prev': '$2,006,377,582.82', 'diff': '$338,489,246.79', 'growth': '16.87%', 'parent_metric': None, 'depth': 0}, {'metric': 'ACV', 'curr': '3,614,315.41', 'prev': '3,919,522.06', 'diff': '-305,206.66', 'growth': '-7.79%', 'parent_metric': 'Sales', 'depth': 1}, {'metric': 'Volume', 'curr': '1,381,319,805.77', 'prev': '1,267,565,899.76', 'diff': '113,753,906.00', 'growth': '8.97%', 'parent_metric': 'Sales', 'depth': 1}]}]}.\nsummary:\n## Pasta Sales Analysis ##\n**Performance Overview:**\nThe pasta category has experienced significant increase in sales (+16.87% ), rising from $2,006,377,582.82 to $2,344,866,829.62..\n**Driving Metrics:**\nSales growth was driven by volume increase (+8.79%), while ACV declined by 7.79%, from 3,919,522.06 to 3,614,315.41.\n**Key Drivers:**\nPRIVATE LABEL led the market with $606,077,860.02 in sales, up by $61,256,314.08. GIOVANNI RANA and BARILLA followed, with sales increases of $53,770,879.92 and $50,774,602.17, respectively.\n###\nExample 2:\nFacts:\n[{'title': 'Peer Facts', 'facts': [{'level': 'Brand', 'competitor': 'PRIVATE LABEL', 'Sales': '$152,807,608.00', 'change': '-$453,271,875.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 453271875.0}, {'level': 'Brand', 'competitor': 'BARILLA', 'Sales': '$146,567,322.00', 'change': '-$423,781,691.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 423781691.0}, {'level': 'Brand', 'competitor': 'GIOVANNI RANA', 'Sales': '$41,702,602.00', 'change': '-$129,888,947.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 129888947.0}]}}, {'title': 'Breakout Facts', 'facts': [{'level': 'Base Size', 'driver': '16 OUNCE', 'Sales': '$101,274,375.00', 'change': '-$306,205,018.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 306205018.0}, {'level': 'Base Size', 'driver': '12 OUNCE', 'Sales': '$24,372,801.00', 'change': '-$61,157,379.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 61157379.0}, {'level': 'Base Size', 'driver': '14.5 OUNCE', 'Sales': '$7,007,526.00', 'change': '-$16,631,014.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 16631014.0}, {'level': 'Manufacturer', 'driver': 'BARILLA G & R F.LLI S.P.A.', 'Sales': '$146,567,322.00', 'change': '-$423,781,691.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 423781691.0}, {'level': 'Segment', 'driver': 'SHORT CUT', 'Sales': '$61,985,296.00', 'change': '-$185,709,862.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 185709862.0}, {'level': 'Segment', 'driver': 'LONG CUT', 'Sales': '$61,464,163.00', 'change': '-$177,343,077.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 177343077.0}, {'level': 'Segment', 'driver': 'BAKING', 'Sales': '$12,497,475.00', 'change': '-$34,233,200.00', 'rank_curr': '3', 'rank_change': 'No Change', 'abs_diff': 34233200.0}, {'level': 'Sub-Category', 'driver': 'SEMOLINA', 'Sales': '$117,014,563.00', 'change': '-$343,972,411.00', 'rank_curr': '1', 'rank_change': 'No Change', 'abs_diff': 343972411.0}, {'level': 'Sub-Category', 'driver': 'MULTIGRAIN', 'Sales': '$12,526,184.00', 'change': '-$31,841,841.00', 'rank_curr': '2', 'rank_change': 'No Change', 'abs_diff': 31841841.0}, {'level': 'Sub-Category', 'driver': 'REMAINING GRAIN', 'Sales': '$6,304,828.00', 'change': '-$18,091,439.00', 'rank_curr': '4', 'rank_change': '-1', 'abs_diff': 18091439.0}]}}, {'title': 'Subject Facts', 'facts': [{'metric': 'Sales', 'curr': '$146,567,322.00', 'prev': '$570,349,013.00', 'diff': '-$423,781,691.00', 'growth': '-74.30%', 'parent_metric': None, 'depth': 0}]}}, {'title': 'Notes about this answer', 'facts': [{'Note to the assistant:': 'The analysis was run using only these filters: Brand = barilla, Category = pasta, Country = united states'}]}, {'title': 'Metric Tree Facts', 'facts': [{'metric': 'Sales', 'curr': '$146,567,322.00', 'prev': '$570,349,013.00', 'diff': '-$423,781,691.00', 'growth': '-74.30%', 'parent_metric': None, 'depth': 0}, {'metric': 'Volume', 'curr': '90,622,621.00', 'prev': '353,012,269.00', 'diff': '-262,389,648.00', 'growth': '-74.33%', 'parent_metric': 'Sales', 'depth': 1}, {'metric': 'Units', 'curr': '89,526,220.00', 'prev': '345,124,705.00', 'diff': '-255,598,485.00', 'growth': '-74.06%', 'parent_metric': 'Sales', 'depth': 1}]}]}.\nsummary:\n## Barilla Sales Analysis ##\n**Performance Overview:**\nBarilla's sales witnessed a -74.30% decline, dropping from $570,349,013.00 to $146,567,322.00. This contraction is slightly below the benchmark set by competitors like PRIVATE LABEL and GIOVANNI RANA,\n**Driving Metrics:**\nSales for Barilla plummeted by -74.30%, driven by substantial declines in volume (-74.33%, from 353,012,269 to 90,622,621) and units (-74.06%, from 345,124,705 to 89,526,220).\n**Key Drivers:**\nBase Size adjustments with the 16 OUNCE package experiencing the most significant sales drop of $306,205,018.00.\nManufacturer insights reveal Barilla G & R F.LLI S.P.A. as the most affected, paralleling the brand's own sales contraction.\nSegment analysis points out the SHORT CUT and LONG CUT as leading categories in sales decline, with SHORT CUT experiencing a $185,709,862.00 drop.\nSub-Category trends show SEMOLINA and MULTIGRAIN as heavily impacted, with SEMOLINA sales down by $343,972,411.00.\n###\nFacts:\n{{facts}}\nSummary:"
+default_value="""Create a comprehensive DDR performance analysis with the following structure:
+
+## {Branch Name} DDR{Metric Number} Performance Analysis ##
+
+**Performance Overview:**  
+The DDR{metric_number} metric at {branch_name} remained stable at {current_value:.3f}, nearly unchanged from the previous period (down {growth:.3f} from {prev_value:.3f}). Top performers by DDR{metric_number} included {top_performer_1:.2f}, followed by {top_performer_2:.2f} and {top_performer_3:.2f}, respectively.
+
+**Top Performers:**
+{top_employee_name} led among managers with a DDR{metric_number} of {top_employee_value:.2f}, followed by {second_employee_name} at {second_employee_value:.2f} and {third_employee_name} at {third_employee_value:.2f}.
+
+By product type, {top_product_name} had the highest DDR{metric_number} at {top_product_value:.2f}, ahead of {second_product_name} at {second_product_value:.2f} and {third_product_name} at {third_product_value:.2f}.
+
+**Supporting Metrics Analysis:**
+
+**Root Cause Analysis (2019 vs 2018):**
+{supporting_metrics_trend_insights}
+
+Based on the data provided, focus on connecting the supporting metrics (damage detection at check-in, employee experience, digitalization rate, transaction volume) to DDR performance. Explain WHY the DDR is over/under target using business logic.
+
+Facts:
+{{facts}}
+Summary:"""
         ),
         SkillParameter(
             name="table_viz_layout",
@@ -128,6 +149,14 @@ def sixt_plan_drivers(parameters: SkillInput):
     param_info = [ParameterDisplayDescription(key=k, value=v) for k, v in env.da.paramater_display_infomation.items()]
 
     insights_dfs = [env.da.df_notes, env.da.breakout_facts, env.da.subject_fact.get("df", pd.DataFrame())]
+    
+    # Add supporting metrics analysis for DDR root cause context
+    try:
+        supporting_metrics_df = create_supporting_metrics_analysis(env)
+        if supporting_metrics_df is not None:
+            insights_dfs.append(supporting_metrics_df)
+    except Exception as e:
+        print(f"DEBUG: Error creating supporting metrics analysis: {e}")
 
     warning_messages = env.da.get_warning_messages()
 
@@ -211,6 +240,107 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
         import traceback
         print(f"**zz DEBUG: Full traceback: {traceback.format_exc()}")
         return "Unable to perform correlation analysis on supporting metrics."
+
+def create_supporting_metrics_analysis(env):
+    """Create supporting metrics analysis DataFrame for DDR root cause insights"""
+    try:
+        from ar_analytics.helpers.utils import sql_to_df
+        
+        # Get the period filter from environment
+        period_filter = env.da.period_filters[0] if env.da.period_filters else None
+        if not period_filter:
+            return None
+            
+        # Build WHERE clause for filters
+        where_conditions = []
+        if env.other_filters:
+            for filter_dict in env.other_filters:
+                if filter_dict.get('dim') and filter_dict.get('val'):
+                    dim = filter_dict['dim']
+                    vals = filter_dict['val']
+                    if isinstance(vals, list):
+                        vals_str = "', '".join([str(v).lower() for v in vals])
+                        where_conditions.append(f"LOWER(r.\"{dim}\") IN ('{vals_str}')")
+                    else:
+                        where_conditions.append(f"LOWER(r.\"{dim}\") = '{str(vals).lower()}'")
+        
+        # Add period filter
+        if period_filter:
+            where_conditions.append(f"r.\"{period_filter['col']}\" {period_filter['op']} {period_filter['val']}")
+        
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+        
+        # SQL to get supporting metrics summary for DDR analysis
+        sql_query = f"""
+        SELECT 
+            'Supporting Metrics Analysis' as analysis_type,
+            COUNT(*) as total_transactions,
+            AVG(r.checkin_count) as avg_checkin_volume,
+            CAST(SUM(CASE WHEN r.damage_detected_at_checkin_flg = 1 THEN r.damage_count ELSE 0 END) AS DOUBLE PRECISION) / NULLIF(SUM(r.damage_count), 0) as damage_detection_at_checkin_rate,
+            AVG(r.months_maturity_employee) as avg_employee_experience_months,
+            CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.live_checkin_flg ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) as digitalization_rate,
+            CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.damage_count ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) as actual_ddr1,
+            AVG(r.target_ddr1) as target_ddr1,
+            CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.damage_count ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) - AVG(r.target_ddr1) as ddr1_vs_target_gap
+        FROM sixt AS r
+        WHERE {where_clause}
+        """
+        
+        print(f"DEBUG: Supporting metrics SQL: {sql_query}")
+        df = sql_to_df(sql_query)
+        
+        if df.empty:
+            return None
+            
+        # Convert to format expected by insights
+        analysis_dict = df.iloc[0].to_dict()
+        
+        # Create insights-ready format
+        insights_data = []
+        insights_data.append({
+            'metric': 'DDR1 Performance Gap',
+            'actual': f"{analysis_dict.get('actual_ddr1', 0):.3f}",
+            'target': f"{analysis_dict.get('target_ddr1', 0):.3f}",
+            'gap': f"{analysis_dict.get('ddr1_vs_target_gap', 0):.3f}",
+            'context': 'vs Target'
+        })
+        
+        insights_data.append({
+            'metric': 'Damage Detection at Check-In',
+            'rate': f"{analysis_dict.get('damage_detection_at_checkin_rate', 0):.3f}",
+            'context': 'Higher rate indicates better damage detection process',
+            'business_impact': 'Directly correlates with DDR1 performance'
+        })
+        
+        insights_data.append({
+            'metric': 'Employee Experience',
+            'avg_months': f"{analysis_dict.get('avg_employee_experience_months', 0):.1f}",
+            'context': 'More experienced employees detect damage more effectively',
+            'business_impact': 'Experience drives detection accuracy'
+        })
+        
+        insights_data.append({
+            'metric': 'Process Digitalization',
+            'digital_rate': f"{analysis_dict.get('digitalization_rate', 0):.3f}",
+            'context': 'Digital tools improve damage detection accuracy',
+            'business_impact': 'Technology adoption enhances performance'
+        })
+        
+        insights_data.append({
+            'metric': 'Transaction Volume',
+            'avg_volume': f"{analysis_dict.get('avg_checkin_volume', 0):.0f}",
+            'total_transactions': f"{analysis_dict.get('total_transactions', 0):.0f}",
+            'context': 'Volume impacts staff workload and detection quality',
+            'business_impact': 'Workload management affects performance'
+        })
+        
+        return pd.DataFrame(insights_data)
+        
+    except Exception as e:
+        import traceback
+        print(f"DEBUG: Error in create_supporting_metrics_analysis: {e}")
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        return None
 
 def generate_correlation_insights(yearly_averages, current_year, previous_year):
     """Generate business insights from YoY correlation analysis"""
