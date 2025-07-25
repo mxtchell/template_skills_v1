@@ -391,7 +391,8 @@ class SixtMetricDriver(DriverAnalysis):
             )
 
         # rename columns - use different label for vs target metrics
-        if check_vs_enabled([env.metric]):
+        # Check if we have vs Target column to determine if this is vs target analysis
+        if 'vs Target' in metric_df.columns:
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
         else:
