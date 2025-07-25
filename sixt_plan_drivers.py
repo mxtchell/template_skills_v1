@@ -667,10 +667,6 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
                 axis=1
             )
 
-            metric_df['vs Target'] = metric_df.apply(
-                lambda row: row['curr'] - target_df[f"target_{row.name}"].iloc[0], 
-                axis=1
-            )
             print(f"DEBUG: Added vs Target column successfully")
         except Exception as e:
             print(f"DEBUG: Error adding vs Target column: {e}")
@@ -733,7 +729,6 @@ class SixtBreakoutDrivers(BreakoutDrivers):
         )
         breakout_df['rank_change'] = 0
 
-        breakout_df['vs Target'] = breakout_df['diff']  # Same as diff column
 
         return breakout_df
 
