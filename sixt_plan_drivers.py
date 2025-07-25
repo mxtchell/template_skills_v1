@@ -87,38 +87,36 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a structured DDR performance analysis with clear sections. Mix narrative and bullet points appropriately.
+default_value="""Create a structured DDR performance analysis with clear sections. Limit to 400 words maximum.
 
 ## Malaga Aeropuerto DDR Performance Analysis ##
 
 **Performance Overview:**  
-Analyze the overall DDR performance vs target using the provided data. Include current value, target value, and variance percentage.
+Current DDR1 is 0.233 vs target of 0.239 (-2.57% below target). Analyze performance vs target using the provided data.
 
 **Key Drivers:**
-Identify the top performing employees and product segments from the breakout data. Explain which factors are driving performance above or below target.
+Identify top performing employees and product segments from the breakout data that drive performance above or below target.
 
 **Supporting Metrics Analysis:**
-Based on the supporting metrics trend data (if provided), analyze:
-• Checkin Count trends and workload impact
-• Damage detection rates at check-in  
-• Digital tool adoption (Live Check In Rate)
-• Employee experience levels (months maturity)
+Use ONLY the supporting metrics data provided in the facts. If monthly trend data is provided for:
+• Checkin Count (transaction volume)
+• Damage At Check In (detection rate)  
+• Live Check In Rate (digital adoption)
+• Months Maturity Employee (experience level)
 
-Connect these operational metrics to DDR performance patterns using actual data values.
+Reference actual data values and trends. Do NOT make assumptions about data not provided.
 
 **Root Cause Analysis:**
-Explain WHY DDR is performing as it is based on the data. Consider:
-• Staff performance variations and training needs
-• Process efficiency and detection accuracy
-• Volume vs quality tradeoffs
-• Technology adoption impact
+Based on the actual data provided, explain WHY DDR is 2.57% below target:
+• Employee performance variations
+• Product segment differences  
+• Operational factors from supporting metrics
 
-**Recommended Actions:**
-• Focus on underperforming areas identified in the data
-• Leverage best practices from top performers
-• Address operational inefficiencies shown in supporting metrics
+**Actions:**
+• Target improvement areas based on data
+• Leverage top performer practices
 
-Use the actual data values provided. Write in professional business language mixing narrative paragraphs with targeted bullet points for key insights.
+Use only facts provided. Mix narrative and bullet points. Maximum 400 words.
 
 Facts:
 {{facts}}
@@ -201,6 +199,11 @@ def sixt_plan_drivers(parameters: SkillInput):
             trend_vizs, trend_metrics_df = trend_result
             if trend_metrics_df is not None:
                 print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
+                print(f"**tt DEBUG: Trend DF columns: {trend_metrics_df.columns.tolist()}")
+                print(f"**tt DEBUG: Trend DF head (first 5 rows):")
+                print(trend_metrics_df.head())
+                print(f"**tt DEBUG: Trend DF data types:")
+                print(trend_metrics_df.dtypes)
                 insights_dfs.append(trend_metrics_df)
         else:
             trend_vizs = trend_result
@@ -562,11 +565,18 @@ def create_trend_chart(env, insights=None):
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
-    for i_df in insights_dfs:
+    print(f"**tt DEBUG: render_layout received {len(insights_dfs)} DataFrames for insights")
+    for i, i_df in enumerate(insights_dfs):
+        print(f"**tt DEBUG: Processing insights DF {i+1} with shape: {i_df.shape}, columns: {i_df.columns.tolist()}")
         facts.append(i_df.to_dict(orient='records'))
 
     insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
     max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
+    
+    print(f"**tt DEBUG: Final insight template contains {len(str(insight_template))} characters")
+    print(f"**tt DEBUG: Facts array contains {len(facts)} fact groups")
+    for i, fact_group in enumerate(facts):
+        print(f"**tt DEBUG: Fact group {i+1} has {len(fact_group)} records")
 
     # adding insights
     ar_utils = ArUtils()
@@ -884,6 +894,12 @@ class SixtMetricDriver(DriverAnalysis):
                 b_df = b_df.rename(
                     columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'diff_pct': '% Growth',
                              'rank_change': 'Rank Change'})
+                # Remove any duplicate vs Target columns that might exist
+                if 'vs Target' in b_df.columns:
+                    vs_target_cols = [col for col in b_df.columns if col == 'vs Target']
+                    if len(vs_target_cols) > 1:
+                        print(f"DEBUG: Found {len(vs_target_cols)} duplicate 'vs Target' columns, keeping first")
+                        b_df = b_df.loc[:, ~b_df.columns.duplicated()]
             else:
                 b_df = b_df.rename(
                     columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'diff_pct': '% Growth',
