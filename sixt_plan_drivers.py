@@ -98,16 +98,22 @@ logger = logging.getLogger(__name__)
 )
 def sixt_plan_drivers(parameters: SkillInput):
     param_dict = {"periods": [], "metric": "", "metric_group": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
-    print(f"Skill received following parameters: {parameters.arguments}")
+    print(f"DEBUG: sixt_plan_drivers received parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
             param_dict[key] = getattr(parameters.arguments, key)
 
+    print(f"DEBUG: Processed param_dict: {param_dict}")
     env = SimpleNamespace(**param_dict)
+    
+    print(f"DEBUG: About to run SixtMetricDriverTemplateParameterSetup with metric: {env.metric}")
     SixtMetricDriverTemplateParameterSetup(env=env)
+    
+    print(f"DEBUG: Creating SixtMetricDriver from env")
     env.da = SixtMetricDriver.from_env(env=env)
 
+    print(f"DEBUG: About to run driver analysis")
     _ = env.da.run_from_env()
 
     optional_columns = ["vs Target"] if check_vs_enabled([env.metric]) else []
@@ -241,20 +247,43 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
         super().__init__(sql_exec, df_provider, sp)
     
     def run(self, table, metrics, period_filters, query_filters=[], table_specific_filters={}, driver_metrics=[], view="", include_sparklines=True, two_year_filter=None, period_col_granularity='day', metric_props={}, add_impacts=False, impact_formulas={}):
+        print(f"DEBUG: SixtMetricTreeAnalysis.run called with metrics: {metrics}")
+        print(f"DEBUG: period_filters: {period_filters}")
+        print(f"DEBUG: check_vs_enabled result: {check_vs_enabled(metrics)}")
+        
+        # For vs target metrics, we don't want comparison period analysis
+        if check_vs_enabled(metrics):
+            print(f"DEBUG: Using vs target mode - skipping comparison period analysis")
+            # Override growth type to None to avoid comparison period logic
+            original_growth_type = getattr(self, 'growth_type', None)
+            self.growth_type = None
+            
         metric_df = super().run(table, metrics, period_filters, query_filters, table_specific_filters, driver_metrics, view, include_sparklines, two_year_filter, period_col_granularity, metric_props, add_impacts, impact_formulas)
         
         if not check_vs_enabled(metrics):
+            print(f"DEBUG: Not vs enabled metrics, returning standard metric_df")
             return metric_df
         
+        print(f"DEBUG: Adding vs Target column for metrics: {metrics}")
         additional_filters = table_specific_filters.get('default', [])
         target_metrics = [f"target_{metric}" for metric in metrics]
         target_metrics = [self.helper.get_metric_prop(m, metric_props) for m in target_metrics]
-        target_df = self.pull_data_func(metrics=target_metrics, filters=query_filters+additional_filters+[period_filters[0]])
+        print(f"DEBUG: Target metrics to pull: {target_metrics}")
+        
+        try:
+            target_df = self.pull_data_func(metrics=target_metrics, filters=query_filters+additional_filters+[period_filters[0]])
+            print(f"DEBUG: Target data retrieved successfully")
+            print(f"DEBUG: Target df shape: {target_df.shape}")
+            print(f"DEBUG: Target df columns: {target_df.columns.tolist()}")
 
-        metric_df['vs Target'] = metric_df.apply(
-            lambda row: row['curr'] - target_df[f"target_{row.name}"].iloc[0], 
-            axis=1
-        )
+            metric_df['vs Target'] = metric_df.apply(
+                lambda row: row['curr'] - target_df[f"target_{row.name}"].iloc[0], 
+                axis=1
+            )
+            print(f"DEBUG: Added vs Target column successfully")
+        except Exception as e:
+            print(f"DEBUG: Error adding vs Target column: {e}")
+            raise
 
         return metric_df
 
@@ -476,6 +505,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
             # Only add comparison period filters if NOT using vs target comparison
             if comp_start_date and comp_end_date and not check_vs_enabled([env.metric]):
+                print(f"DEBUG: Adding comparison period filter for non-vs-target metric")
                 period_filters.append(
                     { "col": period_col, "op": "BETWEEN", "val": f"'{comp_start_date}' AND '{comp_end_date}'" }
                 )
@@ -490,6 +520,10 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
                     exit_with_status(" ".join(msg))
                 elif self.is_date_range_partially_out_of_bounds(comp_start_date, comp_end_date):
                     compare_date_warning_msg = "Data is only avaiable for partial comparison period. This gap might impact the analysis results and insights."
+            elif check_vs_enabled([env.metric]):
+                print(f"DEBUG: Skipping comparison period for vs target metric: {env.metric}")
+                comp_start_date = None
+                comp_end_date = None
 
             two_year_filter = None
 
@@ -550,8 +584,11 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
         # set growth type - default to None for vs target metrics
         if check_vs_enabled([env.metric]):
+            print(f"DEBUG: Setting growth_type to None for vs target metric: {env.metric}")
             driver_analysis_parameters["growth_type"] = "None"
+            env.growth_type = "None"  # Also set on env to prevent comparison period logic
         else:
+            print(f"DEBUG: Using standard growth_type: {env.growth_type}")
             driver_analysis_parameters["growth_type"] = env.growth_type
 
         # use sparklines
