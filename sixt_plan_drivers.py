@@ -330,8 +330,8 @@ def create_trend_chart(env, insights=None):
         print(f"**tt DEBUG: Number of display_charts: {len(display_charts) if display_charts else 0}")
         print(f"**tt DEBUG: Number of dynamic charts: {len(charts) if charts else 0}")
         
-        # Use display_charts if available, fallback to dynamic charts
-        chart_source = display_charts if display_charts else charts
+        # Use dynamic charts which have the correct format for layout templates
+        chart_source = charts if charts else display_charts
         
         # Create multiple visualizations for all chart types (absolute, growth, difference)
         if chart_source:
@@ -358,13 +358,10 @@ def create_trend_chart(env, insights=None):
                 else:
                     print(f"**tt DEBUG: Chart '{chart_name}' direct data: {str(chart_data)[:200]}...")
             
-            # Create a visualization for each chart type
-            for i, (chart_name, chart_data) in enumerate(chart_source.items()):
-                # Handle both display_charts format and dynamic_layout format
-                if isinstance(chart_data, dict) and 'chart_vars' in chart_data:
-                    chart_vars = chart_data['chart_vars']  # display_charts format
-                else:
-                    chart_vars = chart_data  # dynamic_layout format
+            # Create a visualization for each chart type  
+            for i, (chart_name, chart_vars) in enumerate(chart_source.items()):
+                # chart_source now contains chart_vars directly from get_dynamic_layout_chart_vars
+                print(f"**tt DEBUG: Processing chart_vars directly for {chart_name}")
                 print(f"**tt DEBUG: Processing chart {i+1}: {chart_name}")
                 
                 tab_vars = {
