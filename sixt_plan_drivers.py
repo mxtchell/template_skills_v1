@@ -246,18 +246,45 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
     def __init__(self, sql_exec:Connector=None, df_provider=None, sp=None):
         super().__init__(sql_exec, df_provider, sp)
     
+    def _get_metric_growth(self, metrics, period_filters, query_filters, table_specific_filters, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}):
+        """Override to handle vs target metrics differently"""
+        print(f"DEBUG: SixtMetricTreeAnalysis._get_metric_growth called with metrics: {metrics}")
+        print(f"DEBUG: period_filters length: {len(period_filters)}")
+        
+        if check_vs_enabled(metrics):
+            print(f"DEBUG: VS target metrics detected, using special handling")
+            # For vs target metrics, we only need current period data
+            additional_filters = table_specific_filters.get('default', [])
+            
+            # Get current period data
+            df_curr = self.pull_data_func(metrics=metrics, filters=query_filters+additional_filters+[period_filters[0]])
+            print(f"DEBUG: Current period data retrieved: {df_curr.shape}")
+            
+            # Create metric_df with only current values (no prev, diff, growth)
+            metric_df = pd.DataFrame(index=metrics)
+            metric_df['curr'] = df_curr.iloc[0]
+            metric_df['prev'] = 0  # No previous period for vs target
+            metric_df['diff'] = 0  # No difference calculation
+            metric_df['growth'] = 0  # No growth calculation
+            
+            # Add empty sparklines if needed
+            if include_sparklines:
+                metric_df['sparkline'] = [[] for _ in metrics]
+            
+            print(f"DEBUG: Created metric_df for vs target metrics")
+            return metric_df
+        else:
+            # For non-vs target metrics, use the parent implementation
+            print(f"DEBUG: Using standard metric growth calculation")
+            return super()._get_metric_growth(metrics, period_filters, query_filters, table_specific_filters, 
+                                            include_sparklines, two_year_filter, period_col_granularity, 
+                                            view, growth_type, metric_props)
+    
     def run(self, table, metrics, period_filters, query_filters=[], table_specific_filters={}, driver_metrics=[], view="", include_sparklines=True, two_year_filter=None, period_col_granularity='day', metric_props={}, add_impacts=False, impact_formulas={}):
         print(f"DEBUG: SixtMetricTreeAnalysis.run called with metrics: {metrics}")
         print(f"DEBUG: period_filters: {period_filters}")
         print(f"DEBUG: check_vs_enabled result: {check_vs_enabled(metrics)}")
         
-        # For vs target metrics, modify period_filters to only have current period
-        if check_vs_enabled(metrics):
-            print(f"DEBUG: Using vs target mode - ensuring only one period filter")
-            # Ensure we only have the current period filter, not comparison period
-            period_filters = period_filters[:1]  # Only keep the first (current) period
-            print(f"DEBUG: Modified period_filters to: {period_filters}")
-            
         metric_df = super().run(table, metrics, period_filters, query_filters, table_specific_filters, driver_metrics, view, include_sparklines, two_year_filter, period_col_granularity, metric_props, add_impacts, impact_formulas)
         
         if not check_vs_enabled(metrics):
