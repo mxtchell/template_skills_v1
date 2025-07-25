@@ -283,7 +283,11 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
 def create_supporting_metrics_analysis(env):
     """Create supporting metrics analysis DataFrame for DDR root cause insights"""
     try:
-        from ar_analytics.helpers.utils import sql_to_df
+        # Use the Connector to execute SQL instead of sql_to_df
+        connector = env.da.sql_exec if hasattr(env.da, 'sql_exec') else None
+        if not connector:
+            print("DEBUG: No SQL connector available")
+            return None
         
         # Get the period filter from environment
         period_filter = env.da.period_filters[0] if env.da.period_filters else None
@@ -326,7 +330,7 @@ def create_supporting_metrics_analysis(env):
         """
         
         print(f"DEBUG: Supporting metrics SQL: {sql_query}")
-        df = sql_to_df(sql_query)
+        df = connector.run_sql(sql_query)
         
         if df.empty:
             return None
@@ -667,10 +671,18 @@ class SixtTestColumnNames(Enum):
 VS_ENABLED_METRICS = [SixtTestColumnNames.DDR1.value, SixtTestColumnNames.DDR2.value]
 
 def check_vs_enabled(metrics):
-    if all([metric in VS_ENABLED_METRICS for metric in metrics]):
-        return True
+    # Handle both string metrics and metric objects with case-insensitive comparison
+    normalized_metrics = []
+    for metric in metrics:
+        if isinstance(metric, dict) and 'name' in metric:
+            normalized_metrics.append(metric['name'].lower())
+        elif isinstance(metric, str):
+            normalized_metrics.append(metric.lower())
+        else:
+            normalized_metrics.append(str(metric).lower())
     
-    return False
+    vs_enabled_lower = [m.lower() for m in VS_ENABLED_METRICS]
+    return all([m in vs_enabled_lower for m in normalized_metrics])
 
 # SIXT METRIC DRIVER CLASSES
 class SixtMetricTreeAnalysis(MetricTreeAnalysis):
