@@ -179,6 +179,32 @@ def sixt_plan_drivers(parameters: SkillInput):
 
     warning_messages = env.da.get_warning_messages()
 
+    # Add supporting metrics trend charts BEFORE render_layout (for DDR analysis)
+    trend_vizs = []
+    if check_vs_enabled([env.metric]):
+        print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
+        trend_result = create_trend_chart(env, insights)
+        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
+        
+        # Handle both old format (just charts) and new format (charts, df)
+        if isinstance(trend_result, tuple) and len(trend_result) == 2:
+            trend_vizs_result, trend_metrics_df = trend_result
+            if trend_metrics_df is not None:
+                print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
+                print(f"**tt DEBUG: Trend DF columns: {trend_metrics_df.columns.tolist()}")
+                print(f"**tt DEBUG: Trend DF head (first 5 rows):")
+                print(trend_metrics_df.head())
+                print(f"**tt DEBUG: Trend DF data types:")
+                print(trend_metrics_df.dtypes)
+                insights_dfs.append(trend_metrics_df)
+            trend_vizs = trend_vizs_result if trend_vizs_result else []
+        else:
+            trend_vizs = trend_result if trend_result else []
+
+    print(f"**tt DEBUG: Before render_layout - insights_dfs has {len(insights_dfs)} DataFrames")
+    for i, df in enumerate(insights_dfs):
+        print(f"**tt DEBUG: insights_dfs[{i}] shape: {df.shape}, columns: {df.columns.tolist()[:10]}")
+
     viz, insights, final_prompt, export_data = render_layout(tables,
                                                             env.da.title,
                                                             env.da.subtitle,
@@ -188,35 +214,14 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
-    # Add supporting metrics trend charts (always for DDR analysis)
-    if check_vs_enabled([env.metric]):
-        print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
-        trend_result = create_trend_chart(env, insights)
-        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
-        
-        # Handle both old format (just charts) and new format (charts, df)
-        if isinstance(trend_result, tuple) and len(trend_result) == 2:
-            trend_vizs, trend_metrics_df = trend_result
-            if trend_metrics_df is not None:
-                print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
-                print(f"**tt DEBUG: Trend DF columns: {trend_metrics_df.columns.tolist()}")
-                print(f"**tt DEBUG: Trend DF head (first 5 rows):")
-                print(trend_metrics_df.head())
-                print(f"**tt DEBUG: Trend DF data types:")
-                print(trend_metrics_df.dtypes)
-                insights_dfs.append(trend_metrics_df)
+    # Add trend visualizations to the viz list after render_layout
+    if trend_vizs:
+        if isinstance(trend_vizs, list):
+            print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
+            viz.extend(trend_vizs)  # Add multiple charts
         else:
-            trend_vizs = trend_result
-            
-        if trend_vizs:
-            if isinstance(trend_vizs, list):
-                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
-                viz.extend(trend_vizs)  # Add multiple charts
-            else:
-                print(f"**tt DEBUG: Adding single trend chart to viz list")
-                viz.append(trend_vizs)  # Add single chart (fallback)
-        else:
-            print(f"**tt DEBUG: No trend charts returned")
+            print(f"**tt DEBUG: Adding single trend chart to viz list")
+            viz.append(trend_vizs)  # Add single chart (fallback)
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -577,6 +582,13 @@ def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, i
     print(f"**tt DEBUG: Facts array contains {len(facts)} fact groups")
     for i, fact_group in enumerate(facts):
         print(f"**tt DEBUG: Fact group {i+1} has {len(fact_group)} records")
+        if isinstance(fact_group, list) and len(fact_group) > 0:
+            first_record = fact_group[0]
+            print(f"**tt DEBUG: Fact group {i+1} sample keys: {list(first_record.keys())[:10]}")
+            # Check if this is the trend data
+            if 'metric' in first_record and 'value' in first_record:
+                print(f"**tt DEBUG: Found trend data in fact group {i+1}")
+                print(f"**tt DEBUG: Sample metrics: {[r.get('metric', '') for r in fact_group[:5]]}")
 
     # adding insights
     ar_utils = ArUtils()
