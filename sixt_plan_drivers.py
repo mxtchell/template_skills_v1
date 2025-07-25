@@ -87,24 +87,29 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a comprehensive DDR performance analysis with the following structure:
+default_value="""Create a DDR performance analysis focused on the data provided. Use ONLY the facts and data from the analysis below.
 
-## {Branch Name} DDR{Metric Number} Performance Analysis ##
+## DDR Performance Analysis ##
 
-**Performance Overview:**  
-The DDR{metric_number} metric at {branch_name} remained stable at {current_value:.3f}, nearly unchanged from the previous period (down {growth:.3f} from {prev_value:.3f}). Top performers by DDR{metric_number} included {top_performer_1:.2f}, followed by {top_performer_2:.2f} and {top_performer_3:.2f}, respectively.
+**Performance Overview:**
+Based on the provided data, analyze the DDR performance vs target and identify the key drivers.
 
-**Top Performers:**
-{top_employee_name} led among managers with a DDR{metric_number} of {top_employee_value:.2f}, followed by {second_employee_name} at {second_employee_value:.2f} and {third_employee_name} at {third_employee_value:.2f}.
+**Key Drivers:**
+Use the breakout analysis data to identify which employees, products, or other factors are driving performance above/below target.
 
-By product type, {top_product_name} had the highest DDR{metric_number} at {top_product_value:.2f}, ahead of {second_product_name} at {second_product_value:.2f} and {third_product_name} at {third_product_value:.2f}.
+**Supporting Metrics Context:**
+The analysis includes supporting metrics data for:
+- Checkin Count: Transaction volume that impacts workload
+- Damage At Check In: Rate of damage detection during check-in process  
+- Live Check In Rate: Digital tool adoption rate
+- Months Maturity Employee: Average employee experience level
 
-**Supporting Metrics Analysis:**
+Reference these metrics ONLY if they appear in the provided facts data. Do not make assumptions about values not provided.
 
-**Root Cause Analysis (2019 vs 2018):**
-{supporting_metrics_trend_insights}
+**Root Cause Analysis:**
+Connect the driver analysis and supporting metrics to explain WHY DDR performance is over/under target. Use only the data provided in the facts.
 
-Based on the data provided, focus on connecting the supporting metrics (damage detection at check-in, employee experience, digitalization rate, transaction volume) to DDR performance. Explain WHY the DDR is over/under target using business logic.
+Write a concise analysis based solely on the facts provided below. Do not add assumptions or generic business insights not supported by the data.
 
 Facts:
 {{facts}}
