@@ -417,11 +417,14 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
                 pills["period"] = f"Period: {start_date}"
             else:
                 pills["period"] = f"Period: {start_date} to {end_date}"
-        if comp_start_date and comp_end_date:
+        # Only show compare period if not using target comparison
+        if comp_start_date and comp_end_date and not check_vs_enabled([env.metric]):
             if comp_start_date == comp_end_date:
                 pills["compare_period"] = f"Compare Period: {comp_start_date}"
             else:
                 pills["compare_period"] = f"Compare Period: {comp_start_date} to {comp_end_date}"
+        elif check_vs_enabled([env.metric]):
+            pills["comparison"] = "vs Target"
         if hasattr(env, "growth_type"):
             if str(env.growth_type).lower() in ["p/p", "y/y"]:
                 pills["growth_type"] = f"Growth Type: {str(env.growth_type)}"
