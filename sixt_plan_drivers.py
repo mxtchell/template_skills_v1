@@ -140,9 +140,9 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
-    # Add trend charts for vs target metrics
+    # Add supporting metrics trend charts (always for DDR analysis)
     if check_vs_enabled([env.metric]):
-        print(f"**tt DEBUG: Creating trend charts for vs target metric")
+        print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
         trend_vizs = create_trend_chart(env, insights)
         print(f"**tt DEBUG: create_trend_chart returned: {type(trend_vizs)}")
         if trend_vizs:
@@ -306,7 +306,7 @@ def create_trend_chart(env, insights=None):
     trend_env.periods = all_periods  # Use both years
     trend_env.metrics = trend_metrics
     trend_env.breakouts = []
-    trend_env.growth_type = "None"  # No growth for supporting metrics
+    trend_env.growth_type = "Y/Y"  # Year-over-year comparison for supporting metrics
     trend_env.other_filters = env.other_filters if hasattr(env, 'other_filters') else []
     trend_env.time_granularity = "month"  # Monthly granularity
     trend_env.limit_n = 10
@@ -321,23 +321,34 @@ def create_trend_chart(env, insights=None):
         
         print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
         
-        # Get chart variables for all chart types
+        # Get chart variables for all chart types using display_charts like trend.py
+        display_charts = trend_analysis.display_charts if hasattr(trend_analysis, 'display_charts') else {}
         charts = trend_analysis.get_dynamic_layout_chart_vars()
         
-        print(f"**tt DEBUG: Number of charts generated: {len(charts) if charts else 0}")
-        print(f"**tt DEBUG: Chart names: {list(charts.keys()) if charts else 'None'}")
+        print(f"**tt DEBUG: display_charts keys: {list(display_charts.keys()) if display_charts else 'None'}")
+        print(f"**tt DEBUG: get_dynamic_layout_chart_vars keys: {list(charts.keys()) if charts else 'None'}")
+        print(f"**tt DEBUG: Number of display_charts: {len(display_charts) if display_charts else 0}")
+        print(f"**tt DEBUG: Number of dynamic charts: {len(charts) if charts else 0}")
+        
+        # Use display_charts if available, fallback to dynamic charts
+        chart_source = display_charts if display_charts else charts
         
         # Create multiple visualizations for all chart types (absolute, growth, difference)
-        if charts:
+        if chart_source:
             viz_list = []
             
             # Prepare base variables for chart layout
             combined_insights = insights if insights else ""
             
-            print(f"**tt DEBUG: Creating {len(charts)} visualizations")
+            print(f"**tt DEBUG: Creating {len(chart_source)} visualizations from chart_source")
             
             # Create a visualization for each chart type
-            for i, (chart_name, chart_vars) in enumerate(charts.items()):
+            for i, (chart_name, chart_data) in enumerate(chart_source.items()):
+                # Handle both display_charts format and dynamic_layout format
+                if isinstance(chart_data, dict) and 'chart_vars' in chart_data:
+                    chart_vars = chart_data['chart_vars']  # display_charts format
+                else:
+                    chart_vars = chart_data  # dynamic_layout format
                 print(f"**tt DEBUG: Processing chart {i+1}: {chart_name}")
                 
                 tab_vars = {
