@@ -195,7 +195,7 @@ def create_trend_chart(env):
     trend_env.breakouts = []
     trend_env.growth_type = "None"  # No growth for supporting metrics
     trend_env.other_filters = env.other_filters if hasattr(env, 'other_filters') else []
-    trend_env.time_granularity = "max_time_month"  # Monthly granularity
+    trend_env.time_granularity = "month"  # Monthly granularity
     trend_env.limit_n = 10
     
     print(f"DEBUG: Creating AdvanceTrend with periods: {trend_env.periods}")
