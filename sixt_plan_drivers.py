@@ -186,8 +186,18 @@ def sixt_plan_drivers(parameters: SkillInput):
     # Add supporting metrics trend charts (always for DDR analysis)
     if check_vs_enabled([env.metric]):
         print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
-        trend_vizs = create_trend_chart(env, insights)
-        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_vizs)}")
+        trend_result = create_trend_chart(env, insights)
+        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
+        
+        # Handle both old format (just charts) and new format (charts, df)
+        if isinstance(trend_result, tuple) and len(trend_result) == 2:
+            trend_vizs, trend_metrics_df = trend_result
+            if trend_metrics_df is not None:
+                print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
+                insights_dfs.append(trend_metrics_df)
+        else:
+            trend_vizs = trend_result
+            
         if trend_vizs:
             if isinstance(trend_vizs, list):
                 print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
@@ -459,6 +469,8 @@ def create_trend_chart(env, insights=None):
         df = trend_analysis.run_from_env()
         
         print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
+        print(f"**tt DEBUG: Trend DF columns: {df.columns.tolist() if df is not None else 'None'}")
+        print(f"**tt DEBUG: Trend DF head:\n{df.head() if df is not None else 'None'}")
         
         # Get chart variables for all chart types using display_charts like trend.py
         display_charts = trend_analysis.display_charts if hasattr(trend_analysis, 'display_charts') else {}
@@ -531,15 +543,15 @@ def create_trend_chart(env, insights=None):
                 viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
                 print(f"**tt DEBUG: Successfully created visualization for {chart_name}")
             
-            print(f"**tt DEBUG: Returning {len(viz_list)} visualizations")
-            return viz_list
+            print(f"**tt DEBUG: Returning {len(viz_list)} visualizations and trend DF")
+            return viz_list, df  # Return both visualizations and the trend DataFrame
         else:
             print("DEBUG: No charts generated from trend analysis")
-            return None
+            return None, None
             
     except Exception as e:
         print(f"DEBUG: Error creating trend chart: {e}")
-        return None
+        return None, None
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
