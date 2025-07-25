@@ -251,12 +251,12 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
         print(f"DEBUG: period_filters: {period_filters}")
         print(f"DEBUG: check_vs_enabled result: {check_vs_enabled(metrics)}")
         
-        # For vs target metrics, we don't want comparison period analysis
+        # For vs target metrics, modify period_filters to only have current period
         if check_vs_enabled(metrics):
-            print(f"DEBUG: Using vs target mode - skipping comparison period analysis")
-            # Override growth type to None to avoid comparison period logic
-            original_growth_type = getattr(self, 'growth_type', None)
-            self.growth_type = None
+            print(f"DEBUG: Using vs target mode - ensuring only one period filter")
+            # Ensure we only have the current period filter, not comparison period
+            period_filters = period_filters[:1]  # Only keep the first (current) period
+            print(f"DEBUG: Modified period_filters to: {period_filters}")
             
         metric_df = super().run(table, metrics, period_filters, query_filters, table_specific_filters, driver_metrics, view, include_sparklines, two_year_filter, period_col_granularity, metric_props, add_impacts, impact_formulas)
         
