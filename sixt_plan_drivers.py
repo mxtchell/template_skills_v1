@@ -156,6 +156,96 @@ def sixt_plan_drivers(parameters: SkillInput):
         export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
     )
 
+def analyze_supporting_metrics_correlation(df, current_year, previous_year, metrics):
+    """Analyze correlation between supporting metrics changes and DDR performance"""
+    if df is None or df.empty:
+        return "No trend data available for correlation analysis."
+    
+    try:
+        # Calculate YoY changes for each supporting metric
+        insights = []
+        
+        print(f"DEBUG: Correlation analysis DF columns: {df.columns.tolist()}")
+        print(f"DEBUG: Correlation analysis DF shape: {df.shape}")
+        
+        # Group by metric and calculate yearly averages
+        yearly_averages = {}
+        
+        for metric in metrics:
+            if metric in df.columns:
+                # Filter data by year (assuming date_column or period info is available)
+                current_data = df[df['month'].str.contains(current_year, na=False)] if 'month' in df.columns else df
+                previous_data = df[df['month'].str.contains(previous_year, na=False)] if 'month' in df.columns else pd.DataFrame()
+                
+                if not current_data.empty:
+                    current_avg = current_data[metric].mean()
+                    yearly_averages[f"{metric}_{current_year}"] = current_avg
+                    
+                    if not previous_data.empty:
+                        previous_avg = previous_data[metric].mean()
+                        yearly_averages[f"{metric}_{previous_year}"] = previous_avg
+                        
+                        # Calculate YoY change
+                        yoy_change = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg != 0 else 0
+                        yearly_averages[f"{metric}_yoy_change"] = yoy_change
+                        
+                        print(f"DEBUG: {metric} - {previous_year}: {previous_avg:.3f}, {current_year}: {current_avg:.3f}, YoY: {yoy_change:.1f}%")
+        
+        # Generate correlation insights based on business logic
+        correlation_text = generate_correlation_insights(yearly_averages, current_year, previous_year)
+        
+        return correlation_text
+        
+    except Exception as e:
+        print(f"DEBUG: Error in correlation analysis: {e}")
+        return "Unable to perform correlation analysis on supporting metrics."
+
+def generate_correlation_insights(yearly_averages, current_year, previous_year):
+    """Generate business insights from YoY correlation analysis"""
+    insights = []
+    
+    # Check for significant changes in key metrics
+    key_insights = {
+        'checkin_count': 'Check-in volume',
+        'damage_at_check_in': 'Damage detection efficiency', 
+        'months_maturity_employee': 'Employee experience',
+        'live_check_in_rate': 'Process digitalization'
+    }
+    
+    for metric, description in key_insights.items():
+        yoy_key = f"{metric}_yoy_change"
+        if yoy_key in yearly_averages:
+            change = yearly_averages[yoy_key]
+            
+            if abs(change) > 5:  # Significant change threshold
+                direction = "increased" if change > 0 else "decreased"
+                insights.append(f"• {description} {direction} by {abs(change):.1f}% from {previous_year} to {current_year}")
+    
+    # Add DDR correlation context
+    insights.append(f"\n**Root Cause Analysis ({current_year} vs {previous_year}):**")
+    
+    # Business logic connections based on the framework documents
+    if 'months_maturity_employee_yoy_change' in yearly_averages:
+        maturity_change = yearly_averages['months_maturity_employee_yoy_change']
+        if maturity_change > 10:
+            insights.append("• Increased employee maturity may contribute to improved damage detection capabilities")
+        elif maturity_change < -10:
+            insights.append("• Decreased employee maturity could negatively impact damage detection performance")
+    
+    if 'damage_at_check_in_yoy_change' in yearly_averages:
+        detection_change = yearly_averages['damage_at_check_in_yoy_change']
+        if detection_change > 5:
+            insights.append("• Higher damage detection rate at check-in supports better DDR performance")
+        elif detection_change < -5:
+            insights.append("• Lower damage detection efficiency may be limiting DDR achievement vs target")
+    
+    if 'live_check_in_rate_yoy_change' in yearly_averages:
+        digital_change = yearly_averages['live_check_in_rate_yoy_change']
+        if digital_change > 10:
+            insights.append("• Increased digitalization of check-in process may enhance damage detection accuracy")
+    
+    return "\n".join(insights) if insights else "No significant year-over-year changes detected in supporting metrics."
+
 def create_trend_chart(env, insights=None):
     """Create monthly trend chart for supporting metrics using AdvanceTrend"""
     print(f"DEBUG: Creating trend chart with periods: {env.periods}")
@@ -165,14 +255,17 @@ def create_trend_chart(env, insights=None):
         period = env.periods[0]
         # Extract year from period (e.g., "2019" or "q2 2019")
         if period.isdigit():
-            year = period
+            current_year = period
         else:
             # Extract year from formatted period
-            year = period.split()[-1] if ' ' in period else period[-4:]
+            current_year = period.split()[-1] if ' ' in period else period[-4:]
     else:
-        year = "2019"  # fallback
+        current_year = "2019"  # fallback
     
-    print(f"DEBUG: Using year {year} for trend chart")
+    # Also get previous year for YoY comparison
+    previous_year = str(int(current_year) - 1)
+    
+    print(f"DEBUG: Using current year {current_year} and previous year {previous_year} for trend analysis")
     
     # Define supporting metrics for trend analysis
     trend_metrics = [
@@ -182,15 +275,21 @@ def create_trend_chart(env, insights=None):
         'live_check_in_rate'
     ]
     
-    # Create trend environment with monthly periods for the full year
-    monthly_periods = []
+    # Create trend environment with monthly periods for both years
+    current_year_periods = []
+    previous_year_periods = []
+    
     for month in range(1, 13):
         month_name = calendar.month_name[month].lower()[:3]  # jan, feb, etc.
-        monthly_periods.append(f"{month_name} {year}")
+        current_year_periods.append(f"{month_name} {current_year}")
+        previous_year_periods.append(f"{month_name} {previous_year}")
+    
+    # Combine both years for comprehensive analysis
+    all_periods = previous_year_periods + current_year_periods
     
     # Create trend environment 
     trend_env = SimpleNamespace()
-    trend_env.periods = monthly_periods
+    trend_env.periods = all_periods  # Use both years
     trend_env.metrics = trend_metrics
     trend_env.breakouts = []
     trend_env.growth_type = "None"  # No growth for supporting metrics
@@ -198,7 +297,7 @@ def create_trend_chart(env, insights=None):
     trend_env.time_granularity = "month"  # Monthly granularity
     trend_env.limit_n = 10
     
-    print(f"DEBUG: Creating AdvanceTrend with periods: {trend_env.periods}")
+    print(f"DEBUG: Creating AdvanceTrend with periods for both years: {len(all_periods)} periods")
     
     try:
         # Set up trend analysis
@@ -206,19 +305,34 @@ def create_trend_chart(env, insights=None):
         trend_analysis = AdvanceTrend.from_env(env=trend_env)
         df = trend_analysis.run_from_env()
         
-        # Get chart variables
-        charts = trend_analysis.get_dynamic_layout_chart_vars()
+        print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
+        
+        # Create YoY analysis for supporting metrics
+        correlation_insights = analyze_supporting_metrics_correlation(df, current_year, previous_year, trend_metrics)
+        
+        # Get chart variables (only show current year in chart)
+        # Reset to current year only for visualization
+        trend_env.periods = current_year_periods
+        TrendTemplateParameterSetup(env=trend_env)
+        chart_analysis = AdvanceTrend.from_env(env=trend_env)
+        chart_df = chart_analysis.run_from_env()
+        charts = chart_analysis.get_dynamic_layout_chart_vars()
         
         # Create visualization using the first chart
         if charts:
             chart_name, chart_vars = next(iter(charts.items()))
             
+            # Combine original insights with correlation analysis
+            combined_insights = insights if insights else ""
+            if correlation_insights:
+                combined_insights += f"\n\n**Supporting Metrics Analysis:**\n{correlation_insights}"
+            
             # Prepare variables for chart layout
             tab_vars = {
-                "headline": f"Supporting Metrics Trends - {year}",
-                "sub_headline": "Monthly trend analysis of key operational metrics",
+                "headline": f"Supporting Metrics Trends - {current_year}",
+                "sub_headline": "Monthly trend analysis of key operational metrics with YoY correlation",
                 "hide_growth_warning": True,
-                "exec_summary": insights if insights else "",
+                "exec_summary": combined_insights,
                 "warning": []
             }
             
@@ -227,7 +341,7 @@ def create_trend_chart(env, insights=None):
             # Render chart using default trend chart layout
             rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
             
-            return SkillVisualization(title=f"Supporting Metrics Trends - {year}", layout=rendered)
+            return SkillVisualization(title=f"Supporting Metrics Trends - {current_year}", layout=rendered)
         else:
             print("DEBUG: No charts generated from trend analysis")
             return None
