@@ -773,8 +773,8 @@ class SixtMetricDriver(DriverAnalysis):
             )
 
         # rename columns - use different label for vs target metrics
-        # Check if we have vs Target column to determine if this is vs target analysis
-        if 'vs Target' in metric_df.columns:
+        # Check if this is vs target analysis using check_vs_enabled function
+        if check_vs_enabled([self.metrics[0]] if self.metrics else []):
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
         else:
@@ -840,8 +840,8 @@ class SixtMetricDriver(DriverAnalysis):
             b_df = b_df[[dim] + breakout_required_columns]
 
             # rename columns - use different label for vs target metrics
-            # For breakouts, we can check if any vs Target column exists
-            if 'vs Target' in b_df.columns:
+            # For breakouts, check if this is vs target analysis using check_vs_enabled function
+            if check_vs_enabled([self.metrics[0]] if self.metrics else []):
                 b_df = b_df.rename(
                     columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'diff_pct': '% Growth',
                              'rank_change': 'Rank Change'})
