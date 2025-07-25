@@ -820,11 +820,14 @@ class SixtMetricDriver(DriverAnalysis):
         current_metric = getattr(self, 'metric', None)
         print(f"DEBUG: self.metric = {current_metric}")
         print(f"DEBUG: check_vs_enabled result = {check_vs_enabled([current_metric] if current_metric else [])}")
+        print(f"DEBUG: VS_ENABLED_METRICS = {VS_ENABLED_METRICS}")
         
         if check_vs_enabled([current_metric] if current_metric else []):
             print("DEBUG: Using vs target column names")
+            print(f"DEBUG: Before rename - metric_df columns: {metric_df.columns.tolist()}")
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
+            print(f"DEBUG: After rename - metric_df columns: {metric_df.columns.tolist()}")
         else:
             print("DEBUG: Using standard column names")
             metric_df = metric_df.rename(
