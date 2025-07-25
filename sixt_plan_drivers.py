@@ -348,9 +348,10 @@ class SixtBreakoutDrivers(BreakoutDrivers):
     def __init__(self, dim_hierarchy, dim_val_map={}, sql_exec:Connector=None, df_provider=None, sp=None):
         super().__init__(dim_hierarchy, dim_val_map, sql_exec, df_provider, sp)
 
-    def _get_breakouts(self, table, metric, breakout, period_filters, query_filters, table_specific_filters, top_n=5, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", dim_props={}):
+    def _get_breakouts(self, table, metric, breakouts, period_filters, query_filters, table_specific_filters, top_n=5, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}, dim_props={}):
         """Override to handle vs target metrics differently"""
         print(f"DEBUG: SixtBreakoutDrivers._get_breakouts called with metric: {metric}")
+        print(f"DEBUG: breakouts: {breakouts}")
         print(f"DEBUG: period_filters length: {len(period_filters)}")
         
         if check_vs_enabled([metric]):
@@ -358,44 +359,55 @@ class SixtBreakoutDrivers(BreakoutDrivers):
             # For vs target metrics, we only need current period data
             additional_filters = table_specific_filters.get('default', [])
             
-            # Get current period data for breakout
-            df_curr = self.pull_data_func(metrics=[metric], breakouts=[breakout], 
-                                        filters=query_filters+additional_filters+[period_filters[0]])
-            print(f"DEBUG: Current period breakout data retrieved: {df_curr.shape}")
+            # Process each breakout dimension
+            all_breakout_dfs = []
+            for breakout in breakouts:
+                print(f"DEBUG: Processing breakout: {breakout}")
+                # Get current period data for breakout
+                df_curr = self.pull_data_func(metrics=[metric], breakouts=[breakout], 
+                                            filters=query_filters+additional_filters+[period_filters[0]])
+                print(f"DEBUG: Current period breakout data retrieved for {breakout}: {df_curr.shape}")
+                
+                # Create breakout_df with only current values
+                breakout_df = pd.DataFrame()
+                breakout_df['dim'] = breakout
+                breakout_df['dim_value'] = df_curr[breakout]
+                breakout_df['curr'] = df_curr[metric]
+                breakout_df['prev'] = 0  # No previous period for vs target
+                breakout_df['diff'] = 0  # No difference calculation
+                breakout_df['diff_pct'] = 0  # No growth calculation
+                
+                # Set index
+                breakout_df.set_index('dim_value', inplace=True)
+                
+                # Add rank columns
+                breakout_df['rank_curr'] = breakout_df['curr'].rank(ascending=False, method='min')
+                breakout_df['rank_prev'] = breakout_df['rank_curr']  # Same as current for vs target
+                breakout_df['rank_change'] = 0  # No rank change for vs target
+                
+                # Sort by current value descending and limit to top_n
+                breakout_df = breakout_df.sort_values('curr', ascending=False).head(top_n)
+                
+                # Add empty sparklines if needed
+                if include_sparklines:
+                    breakout_df['sparkline'] = [[] for _ in breakout_df.index]
+                
+                all_breakout_dfs.append(breakout_df)
             
-            # Create breakout_df with only current values
-            breakout_df = pd.DataFrame()
-            breakout_df['dim'] = breakout
-            breakout_df['dim_value'] = df_curr[breakout]
-            breakout_df['curr'] = df_curr[metric]
-            breakout_df['prev'] = 0  # No previous period for vs target
-            breakout_df['diff'] = 0  # No difference calculation
-            breakout_df['diff_pct'] = 0  # No growth calculation
-            
-            # Set index
-            breakout_df.set_index('dim_value', inplace=True)
-            
-            # Add rank columns
-            breakout_df['rank_curr'] = breakout_df['curr'].rank(ascending=False, method='min')
-            breakout_df['rank_prev'] = breakout_df['rank_curr']  # Same as current for vs target
-            breakout_df['rank_change'] = 0  # No rank change for vs target
-            
-            # Sort by current value descending and limit to top_n
-            breakout_df = breakout_df.sort_values('curr', ascending=False).head(top_n)
-            
-            # Add empty sparklines if needed
-            if include_sparklines:
-                breakout_df['sparkline'] = [[] for _ in breakout_df.index]
-            
-            print(f"DEBUG: Created breakout_df for vs target metric")
-            return breakout_df
+            # Combine all breakout dataframes
+            if all_breakout_dfs:
+                combined_df = pd.concat(all_breakout_dfs)
+                print(f"DEBUG: Created combined breakout_df for vs target metric")
+                return combined_df
+            else:
+                return pd.DataFrame()
         else:
             # For non-vs target metrics, use the parent implementation
             print(f"DEBUG: Using standard breakout calculation")
-            return super()._get_breakouts(table, metric, breakout, period_filters, query_filters, 
+            return super()._get_breakouts(table, metric, breakouts, period_filters, query_filters, 
                                         table_specific_filters, top_n, include_sparklines, 
                                         two_year_filter, period_col_granularity, view, 
-                                        growth_type, dim_props)
+                                        growth_type, metric_props, dim_props)
 
     def run(self, table, metric, breakouts, period_filters, query_filters=[], table_specific_filters={}, top_n=5, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}, dim_props={}):
         breakout_df = super().run(table, metric, breakouts, period_filters, query_filters, table_specific_filters, top_n, include_sparklines, two_year_filter, period_col_granularity, view, growth_type, metric_props, dim_props)
