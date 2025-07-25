@@ -246,7 +246,7 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
     def __init__(self, sql_exec:Connector=None, df_provider=None, sp=None):
         super().__init__(sql_exec, df_provider, sp)
     
-    def _get_metric_growth(self, metrics, period_filters, query_filters, table_specific_filters, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}):
+    def _get_metric_growth(self, table, metrics, period_filters, query_filters, table_specific_filters, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}):
         """Override to handle vs target metrics differently"""
         print(f"DEBUG: SixtMetricTreeAnalysis._get_metric_growth called with metrics: {metrics}")
         print(f"DEBUG: period_filters length: {len(period_filters)}")
@@ -276,7 +276,7 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
         else:
             # For non-vs target metrics, use the parent implementation
             print(f"DEBUG: Using standard metric growth calculation")
-            return super()._get_metric_growth(metrics, period_filters, query_filters, table_specific_filters, 
+            return super()._get_metric_growth(table, metrics, period_filters, query_filters, table_specific_filters, 
                                             include_sparklines, two_year_filter, period_col_granularity, 
                                             view, growth_type, metric_props)
     
