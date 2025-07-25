@@ -87,31 +87,38 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a structured DDR performance analysis with clear sections. Use the data provided below.
+default_value="""Create a structured DDR performance analysis with clear sections. Mix narrative and bullet points appropriately.
 
 ## Malaga Aeropuerto DDR Performance Analysis ##
 
 **Performance Overview:**  
-The DDR1 metric at Malaga Aeropuerto remained stable at 0.233, nearly unchanged from the previous period (down 0.006 from 0.239). DDR1 is 2.57% below target, indicating minor underperformance requiring attention.
+Analyze the overall DDR performance vs target using the provided data. Include current value, target value, and variance percentage.
 
-**Top Performers:**
-User_Ex5089 led among managers with a DDR1 of 0.57, followed by User_Ex5016 at 0.44 and User_Ex5006 at 0.43. These three employees are driving the highest DDR1 results significantly above branch average.
-
-By product type, Van/Truck Short Term had the highest DDR1 at 0.32, ahead of Passenger Car Long Term at 0.25 and Passenger Car Short Term at 0.23.
+**Key Drivers:**
+Identify the top performing employees and product segments from the breakout data. Explain which factors are driving performance above or below target.
 
 **Supporting Metrics Analysis:**
+Based on the supporting metrics trend data (if provided), analyze:
+• Checkin Count trends and workload impact
+• Damage detection rates at check-in  
+• Digital tool adoption (Live Check In Rate)
+• Employee experience levels (months maturity)
 
-**Root Cause Analysis (2019 vs 2018):**
-Based on the supporting metrics trend data, analyze the operational drivers:
-- Checkin Count trend and impact on workload
-- Damage At Check In detection rate changes  
-- Live Check In Rate digitalization progress
-- Employee Experience (months maturity) correlation with performance
+Connect these operational metrics to DDR performance patterns using actual data values.
 
-Connect these operational metrics to explain DDR performance patterns.
+**Root Cause Analysis:**
+Explain WHY DDR is performing as it is based on the data. Consider:
+• Staff performance variations and training needs
+• Process efficiency and detection accuracy
+• Volume vs quality tradeoffs
+• Technology adoption impact
 
-**Summary:**
-Summarize the key findings and actionable insights for improving DDR performance vs target.
+**Recommended Actions:**
+• Focus on underperforming areas identified in the data
+• Leverage best practices from top performers
+• Address operational inefficiencies shown in supporting metrics
+
+Use the actual data values provided. Write in professional business language mixing narrative paragraphs with targeted bullet points for key insights.
 
 Facts:
 {{facts}}
