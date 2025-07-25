@@ -8,8 +8,8 @@ from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
 
-from ar_analytics import ArUtils, AdvanceTrend, TrendTemplateParameterSetup
-from ar_analytics.defaults import default_table_layout, get_table_layout_vars, default_trend_chart_layout
+from ar_analytics import ArUtils
+from ar_analytics.defaults import default_table_layout, get_table_layout_vars
 from ar_analytics.driver_analysis import DriverAnalysis, DriverAnalysisTemplateParameterSetup
 from ar_analytics.helpers.utils import Connector, exit_with_status, NO_LIMIT_N, fmt_sign_num
 from ar_analytics.metric_tree import MetricTreeAnalysis
@@ -18,7 +18,6 @@ from ar_analytics.breakout_drivers import BreakoutDrivers
 import jinja2
 import logging
 import json
-import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -140,21 +139,6 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
-    # Add supporting metrics trend charts (always for DDR analysis)
-    if check_vs_enabled([env.metric]):
-        print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
-        trend_vizs = create_trend_chart(env, insights)
-        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_vizs)}")
-        if trend_vizs:
-            if isinstance(trend_vizs, list):
-                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
-                viz.extend(trend_vizs)  # Add multiple charts
-            else:
-                print(f"**tt DEBUG: Adding single trend chart to viz list")
-                viz.append(trend_vizs)  # Add single chart (fallback)
-        else:
-            print(f"**tt DEBUG: No trend charts returned")
-
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=None,
@@ -163,220 +147,6 @@ def sixt_plan_drivers(parameters: SkillInput):
         followup_questions=[],
         export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
     )
-
-def analyze_supporting_metrics_correlation(df, current_year, previous_year, metrics):
-    """Analyze correlation between supporting metrics changes and DDR performance"""
-    if df is None or df.empty:
-        return "No trend data available for correlation analysis."
-    
-    try:
-        # Calculate YoY changes for each supporting metric
-        insights = []
-        
-        print(f"**zz DEBUG: Correlation analysis DF columns: {df.columns.tolist()}")
-        print(f"**zz DEBUG: Correlation analysis DF shape: {df.shape}")
-        print(f"**zz DEBUG: Sample data from DF: {df.head()}")
-        
-        # Group by metric and calculate yearly averages
-        yearly_averages = {}
-        
-        for metric in metrics:
-            if metric in df.columns:
-                # Filter data by year (assuming date_column or period info is available)
-                current_data = df[df['month'].str.contains(current_year, na=False)] if 'month' in df.columns else df
-                previous_data = df[df['month'].str.contains(previous_year, na=False)] if 'month' in df.columns else pd.DataFrame()
-                
-                if not current_data.empty:
-                    current_avg = current_data[metric].mean()
-                    yearly_averages[f"{metric}_{current_year}"] = current_avg
-                    
-                    if not previous_data.empty:
-                        previous_avg = previous_data[metric].mean()
-                        yearly_averages[f"{metric}_{previous_year}"] = previous_avg
-                        
-                        # Calculate YoY change
-                        yoy_change = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg != 0 else 0
-                        yearly_averages[f"{metric}_yoy_change"] = yoy_change
-                        
-                        print(f"**zz DEBUG: {metric} - {previous_year}: {previous_avg:.3f}, {current_year}: {current_avg:.3f}, YoY: {yoy_change:.1f}%")
-        
-        # Generate correlation insights based on business logic
-        correlation_text = generate_correlation_insights(yearly_averages, current_year, previous_year)
-        
-        print(f"**zz DEBUG: Generated correlation text: {correlation_text}")
-        return correlation_text
-        
-    except Exception as e:
-        print(f"**zz DEBUG: Error in correlation analysis: {e}")
-        import traceback
-        print(f"**zz DEBUG: Full traceback: {traceback.format_exc()}")
-        return "Unable to perform correlation analysis on supporting metrics."
-
-def generate_correlation_insights(yearly_averages, current_year, previous_year):
-    """Generate business insights from YoY correlation analysis"""
-    print(f"**zz DEBUG: yearly_averages keys: {list(yearly_averages.keys())}")
-    print(f"**zz DEBUG: yearly_averages values: {yearly_averages}")
-    insights = []
-    
-    # Check for significant changes in key metrics
-    key_insights = {
-        'checkin_count': 'Check-in volume',
-        'damage_at_check_in': 'Damage detection efficiency', 
-        'months_maturity_employee': 'Employee experience',
-        'live_check_in_rate': 'Process digitalization'
-    }
-    
-    for metric, description in key_insights.items():
-        yoy_key = f"{metric}_yoy_change"
-        if yoy_key in yearly_averages:
-            change = yearly_averages[yoy_key]
-            
-            if abs(change) > 5:  # Significant change threshold
-                direction = "increased" if change > 0 else "decreased"
-                insights.append(f"• {description} {direction} by {abs(change):.1f}% from {previous_year} to {current_year}")
-    
-    # Add DDR correlation context
-    insights.append(f"\n**Root Cause Analysis ({current_year} vs {previous_year}):**")
-    
-    # Business logic connections based on the framework documents
-    if 'months_maturity_employee_yoy_change' in yearly_averages:
-        maturity_change = yearly_averages['months_maturity_employee_yoy_change']
-        if maturity_change > 10:
-            insights.append("• Increased employee maturity may contribute to improved damage detection capabilities")
-        elif maturity_change < -10:
-            insights.append("• Decreased employee maturity could negatively impact damage detection performance")
-    
-    if 'damage_at_check_in_yoy_change' in yearly_averages:
-        detection_change = yearly_averages['damage_at_check_in_yoy_change']
-        if detection_change > 5:
-            insights.append("• Higher damage detection rate at check-in supports better DDR performance")
-        elif detection_change < -5:
-            insights.append("• Lower damage detection efficiency may be limiting DDR achievement vs target")
-    
-    if 'live_check_in_rate_yoy_change' in yearly_averages:
-        digital_change = yearly_averages['live_check_in_rate_yoy_change']
-        if digital_change > 10:
-            insights.append("• Increased digitalization of check-in process may enhance damage detection accuracy")
-    
-    return "\n".join(insights) if insights else "No significant year-over-year changes detected in supporting metrics."
-
-def create_trend_chart(env, insights=None):
-    """Create monthly trend chart for supporting metrics using AdvanceTrend"""
-    print(f"DEBUG: Creating trend chart with periods: {env.periods}")
-    
-    # Extract year from periods - use first period and get full year
-    if env.periods and len(env.periods) > 0:
-        period = env.periods[0]
-        # Extract year from period (e.g., "2019" or "q2 2019")
-        if period.isdigit():
-            current_year = period
-        else:
-            # Extract year from formatted period
-            current_year = period.split()[-1] if ' ' in period else period[-4:]
-    else:
-        current_year = "2019"  # fallback
-    
-    # Also get previous year for YoY comparison
-    previous_year = str(int(current_year) - 1)
-    
-    print(f"DEBUG: Using current year {current_year} and previous year {previous_year} for trend analysis")
-    
-    # Define supporting metrics for trend analysis
-    trend_metrics = [
-        'checkin_count',
-        'damage_at_check_in', 
-        'months_maturity_employee',
-        'live_check_in_rate'
-    ]
-    
-    # Create trend environment with monthly periods for both years
-    current_year_periods = []
-    previous_year_periods = []
-    
-    for month in range(1, 13):
-        month_name = calendar.month_name[month].lower()[:3]  # jan, feb, etc.
-        current_year_periods.append(f"{month_name} {current_year}")
-        previous_year_periods.append(f"{month_name} {previous_year}")
-    
-    # Combine both years for comprehensive analysis
-    all_periods = previous_year_periods + current_year_periods
-    
-    # Create trend environment 
-    trend_env = SimpleNamespace()
-    trend_env.periods = all_periods  # Use both years
-    trend_env.metrics = trend_metrics
-    trend_env.breakouts = []
-    trend_env.growth_type = "Y/Y"  # Year-over-year comparison for supporting metrics
-    trend_env.other_filters = env.other_filters if hasattr(env, 'other_filters') else []
-    trend_env.time_granularity = "month"  # Monthly granularity
-    trend_env.limit_n = 10
-    
-    print(f"DEBUG: Creating AdvanceTrend with periods for both years: {len(all_periods)} periods")
-    
-    try:
-        # Set up trend analysis
-        TrendTemplateParameterSetup(env=trend_env)
-        trend_analysis = AdvanceTrend.from_env(env=trend_env)
-        df = trend_analysis.run_from_env()
-        
-        print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
-        
-        # Get chart variables for all chart types using display_charts like trend.py
-        display_charts = trend_analysis.display_charts if hasattr(trend_analysis, 'display_charts') else {}
-        charts = trend_analysis.get_dynamic_layout_chart_vars()
-        
-        print(f"**tt DEBUG: display_charts keys: {list(display_charts.keys()) if display_charts else 'None'}")
-        print(f"**tt DEBUG: get_dynamic_layout_chart_vars keys: {list(charts.keys()) if charts else 'None'}")
-        print(f"**tt DEBUG: Number of display_charts: {len(display_charts) if display_charts else 0}")
-        print(f"**tt DEBUG: Number of dynamic charts: {len(charts) if charts else 0}")
-        
-        # Use display_charts if available, fallback to dynamic charts
-        chart_source = display_charts if display_charts else charts
-        
-        # Create multiple visualizations for all chart types (absolute, growth, difference)
-        if chart_source:
-            viz_list = []
-            
-            # Prepare base variables for chart layout
-            combined_insights = insights if insights else ""
-            
-            print(f"**tt DEBUG: Creating {len(chart_source)} visualizations from chart_source")
-            
-            # Create a visualization for each chart type
-            for i, (chart_name, chart_data) in enumerate(chart_source.items()):
-                # Handle both display_charts format and dynamic_layout format
-                if isinstance(chart_data, dict) and 'chart_vars' in chart_data:
-                    chart_vars = chart_data['chart_vars']  # display_charts format
-                else:
-                    chart_vars = chart_data  # dynamic_layout format
-                print(f"**tt DEBUG: Processing chart {i+1}: {chart_name}")
-                
-                tab_vars = {
-                    "headline": f"Supporting Metrics Trends - {current_year}",
-                    "sub_headline": f"Monthly trend analysis - {chart_name}",
-                    "hide_growth_warning": True,
-                    "hide_growth_chart": False,  # ENABLE growth and difference charts
-                    "exec_summary": combined_insights,
-                    "warning": []
-                }
-                
-                chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
-                chart_vars["hide_growth_chart"] = False  # ENSURE growth charts are enabled
-                
-                # Render chart using default trend chart layout
-                rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
-                viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
-                print(f"**tt DEBUG: Successfully created visualization for {chart_name}")
-            
-            print(f"**tt DEBUG: Returning {len(viz_list)} visualizations")
-            return viz_list
-        else:
-            print("DEBUG: No charts generated from trend analysis")
-            return None
-            
-    except Exception as e:
-        print(f"DEBUG: Error creating trend chart: {e}")
-        return None
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
