@@ -8,8 +8,8 @@ from skill_framework.preview import preview_skill
 from skill_framework.skills import ExportData
 from skill_framework.layouts import wire_layout
 
-from ar_analytics import ArUtils
-from ar_analytics.defaults import default_table_layout, get_table_layout_vars
+from ar_analytics import ArUtils, AdvanceTrend, TrendTemplateParameterSetup
+from ar_analytics.defaults import default_table_layout, get_table_layout_vars, default_trend_chart_layout
 from ar_analytics.driver_analysis import DriverAnalysis, DriverAnalysisTemplateParameterSetup
 from ar_analytics.helpers.utils import Connector, exit_with_status, NO_LIMIT_N, fmt_sign_num
 from ar_analytics.metric_tree import MetricTreeAnalysis
@@ -18,6 +18,7 @@ from ar_analytics.breakout_drivers import BreakoutDrivers
 import jinja2
 import logging
 import json
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,13 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
+    # Add trend chart for vs target metrics
+    if check_vs_enabled([env.metric]):
+        print(f"DEBUG: Creating trend chart for vs target metric")
+        trend_viz = create_trend_chart(env)
+        if trend_viz:
+            viz.append(trend_viz)
+
     return SkillOutput(
         final_prompt=final_prompt,
         narrative=None,
@@ -147,6 +155,86 @@ def sixt_plan_drivers(parameters: SkillInput):
         followup_questions=[],
         export_data=[ExportData(name=name, data=df) for name, df in export_data.items()]
     )
+
+def create_trend_chart(env):
+    """Create monthly trend chart for supporting metrics using AdvanceTrend"""
+    print(f"DEBUG: Creating trend chart with periods: {env.periods}")
+    
+    # Extract year from periods - use first period and get full year
+    if env.periods and len(env.periods) > 0:
+        period = env.periods[0]
+        # Extract year from period (e.g., "2019" or "q2 2019")
+        if period.isdigit():
+            year = period
+        else:
+            # Extract year from formatted period
+            year = period.split()[-1] if ' ' in period else period[-4:]
+    else:
+        year = "2019"  # fallback
+    
+    print(f"DEBUG: Using year {year} for trend chart")
+    
+    # Define supporting metrics for trend analysis
+    trend_metrics = [
+        'checkin_count',
+        'damage_at_check_in', 
+        'months_maturity_employee',
+        'live_check_in_rate'
+    ]
+    
+    # Create trend environment with monthly periods for the full year
+    monthly_periods = []
+    for month in range(1, 13):
+        month_name = calendar.month_name[month].lower()[:3]  # jan, feb, etc.
+        monthly_periods.append(f"{month_name} {year}")
+    
+    # Create trend environment 
+    trend_env = SimpleNamespace()
+    trend_env.periods = monthly_periods
+    trend_env.metrics = trend_metrics
+    trend_env.breakouts = []
+    trend_env.growth_type = "None"  # No growth for supporting metrics
+    trend_env.other_filters = env.other_filters if hasattr(env, 'other_filters') else []
+    trend_env.time_granularity = "max_time_month"  # Monthly granularity
+    trend_env.limit_n = 10
+    
+    print(f"DEBUG: Creating AdvanceTrend with periods: {trend_env.periods}")
+    
+    try:
+        # Set up trend analysis
+        TrendTemplateParameterSetup(env=trend_env)
+        trend_analysis = AdvanceTrend.from_env(env=trend_env)
+        df = trend_analysis.run_from_env()
+        
+        # Get chart variables
+        charts = trend_analysis.get_dynamic_layout_chart_vars()
+        
+        # Create visualization using the first chart
+        if charts:
+            chart_name, chart_vars = next(iter(charts.items()))
+            
+            # Prepare variables for chart layout
+            tab_vars = {
+                "headline": f"Supporting Metrics Trends - {year}",
+                "sub_headline": "Monthly trend analysis of key operational metrics",
+                "hide_growth_warning": True,
+                "exec_summary": "",
+                "warning": []
+            }
+            
+            chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
+            
+            # Render chart using default trend chart layout
+            rendered = wire_layout(json.loads(default_trend_chart_layout), {**tab_vars, **chart_vars})
+            
+            return SkillVisualization(title=f"Supporting Metrics Trends - {year}", layout=rendered)
+        else:
+            print("DEBUG: No charts generated from trend analysis")
+            return None
+            
+    except Exception as e:
+        print(f"DEBUG: Error creating trend chart: {e}")
+        return None
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
