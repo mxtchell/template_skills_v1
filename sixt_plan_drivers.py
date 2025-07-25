@@ -661,7 +661,11 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
                 metric_df.loc[metric, 'prev'] = target_df[f"target_{metric}"].iloc[0]
                 metric_df.loc[metric, 'diff'] = metric_df.loc[metric, 'curr'] - target_df[f"target_{metric}"].iloc[0]
             
-            metric_df['growth'] = 0  # No growth calculation for vs target
+            # Calculate growth as percentage vs target
+            metric_df['growth'] = metric_df.apply(
+                lambda row: (row['curr'] - target_df[f"target_{row.name}"].iloc[0]) / target_df[f"target_{row.name}"].iloc[0] if target_df[f"target_{row.name}"].iloc[0] != 0 else 0, 
+                axis=1
+            )
 
             metric_df['vs Target'] = metric_df.apply(
                 lambda row: row['curr'] - target_df[f"target_{row.name}"].iloc[0], 
@@ -722,7 +726,11 @@ class SixtBreakoutDrivers(BreakoutDrivers):
             lambda row: row['curr'] - target_df[target_df.index == row.name][f"target_{metric}"].iloc[0], 
             axis=1
         )
-        breakout_df['diff_pct'] = 0  # No growth percentage for vs target
+        # Calculate diff_pct as percentage vs target
+        breakout_df['diff_pct'] = breakout_df.apply(
+            lambda row: (row['curr'] - target_df[target_df.index == row.name][f"target_{metric}"].iloc[0]) / target_df[target_df.index == row.name][f"target_{metric}"].iloc[0] if target_df[target_df.index == row.name][f"target_{metric}"].iloc[0] != 0 else 0, 
+            axis=1
+        )
         breakout_df['rank_change'] = 0
 
         breakout_df['vs Target'] = breakout_df['diff']  # Same as diff column
