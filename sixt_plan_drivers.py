@@ -87,9 +87,7 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a concise DDR performance summary focused on actionable insights. Maximum 300 words.
-
-# Malaga Aeropuerto - 2019 DDR1 Performance Summary
+default_value="""Create a concise DDR performance summary focused on actionable insights. Maximum 300 words. Do not include a main title.
 
 ## Overall Performance
 Briefly state DDR1 actual vs target and the gap percentage.
@@ -706,7 +704,7 @@ class SixtMetricDriver(DriverAnalysis):
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
         else:
             metric_df = metric_df.rename(
-                columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
+                columns={'curr': 'Value', 'prev': 'Target', 'diff': 'Variance', 'growth': '% Growth'})
         
         metric_df = metric_df.reset_index()
 
@@ -779,7 +777,7 @@ class SixtMetricDriver(DriverAnalysis):
                         b_df = b_df.loc[:, ~b_df.columns.duplicated()]
             else:
                 b_df = b_df.rename(
-                    columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'diff_pct': '% Growth',
+                    columns={'curr': 'Value', 'prev': 'Target', 'diff': 'Variance', 'diff_pct': '% Growth',
                              'rank_change': 'Rank Change'})
             breakout_dfs[viz_name] = b_df
 
