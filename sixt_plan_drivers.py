@@ -340,49 +340,24 @@ def create_supporting_metrics_analysis(env):
         if df.empty:
             return None
             
-        # Convert to format expected by insights
+        # Convert to format expected by insights - return raw metrics
         analysis_dict = df.iloc[0].to_dict()
         
-        # Create insights-ready format
-        insights_data = []
-        insights_data.append({
-            'metric': 'DDR1 Performance Gap',
-            'actual': f"{analysis_dict.get('actual_ddr1', 0):.3f}",
-            'target': f"{analysis_dict.get('target_ddr1', 0):.3f}",
-            'gap': f"{analysis_dict.get('ddr1_vs_target_gap', 0):.3f}",
-            'context': 'vs Target'
-        })
+        # Create a simple summary format that the LLM can understand
+        summary_data = {
+            'supporting_metrics_summary': {
+                'actual_ddr1': analysis_dict.get('actual_ddr1', 0),
+                'target_ddr1': analysis_dict.get('target_ddr1', 0),
+                'gap_vs_target': analysis_dict.get('ddr1_vs_target_gap', 0),
+                'avg_checkin_volume': analysis_dict.get('avg_checkin_volume', 0),
+                'damage_detection_rate': analysis_dict.get('damage_detection_at_checkin_rate', 0),
+                'avg_employee_months': analysis_dict.get('avg_employee_experience_months', 0),
+                'digital_checkin_rate': analysis_dict.get('digitalization_rate', 0),
+                'total_transactions': int(analysis_dict.get('total_transactions', 0))
+            }
+        }
         
-        insights_data.append({
-            'metric': 'Damage Detection at Check-In',
-            'rate': f"{analysis_dict.get('damage_detection_at_checkin_rate', 0):.3f}",
-            'context': 'Higher rate indicates better damage detection process',
-            'business_impact': 'Directly correlates with DDR1 performance'
-        })
-        
-        insights_data.append({
-            'metric': 'Employee Experience',
-            'avg_months': f"{analysis_dict.get('avg_employee_experience_months', 0):.1f}",
-            'context': 'More experienced employees detect damage more effectively',
-            'business_impact': 'Experience drives detection accuracy'
-        })
-        
-        insights_data.append({
-            'metric': 'Process Digitalization',
-            'digital_rate': f"{analysis_dict.get('digitalization_rate', 0):.3f}",
-            'context': 'Digital tools improve damage detection accuracy',
-            'business_impact': 'Technology adoption enhances performance'
-        })
-        
-        insights_data.append({
-            'metric': 'Transaction Volume',
-            'avg_volume': f"{analysis_dict.get('avg_checkin_volume', 0):.0f}",
-            'total_transactions': f"{analysis_dict.get('total_transactions', 0):.0f}",
-            'context': 'Volume impacts staff workload and detection quality',
-            'business_impact': 'Workload management affects performance'
-        })
-        
-        return pd.DataFrame(insights_data)
+        return pd.DataFrame([summary_data])
         
     except Exception as e:
         import traceback
