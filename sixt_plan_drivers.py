@@ -179,19 +179,11 @@ def sixt_plan_drivers(parameters: SkillInput):
 
     warning_messages = env.da.get_warning_messages()
 
-    viz, insights, final_prompt, export_data = render_layout(tables,
-                                                            env.da.title,
-                                                            env.da.subtitle,
-                                                            insights_dfs,
-                                                            warning_messages,
-                                                            parameters.arguments.max_prompt,
-                                                            parameters.arguments.insight_prompt,
-                                                            parameters.arguments.table_viz_layout)
-
-    # Add supporting metrics trend charts (always for DDR analysis)
+    # Create trend charts and data BEFORE render_layout so it's included in insights
+    trend_vizs = []
     if check_vs_enabled([env.metric]):
         print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
-        trend_result = create_trend_chart(env, insights)
+        trend_result = create_trend_chart(env, None)  # Pass None for insights initially
         print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
         
         # Handle both old format (just charts) and new format (charts, df)
@@ -207,16 +199,26 @@ def sixt_plan_drivers(parameters: SkillInput):
                 insights_dfs.append(trend_metrics_df)
         else:
             trend_vizs = trend_result
-            
-        if trend_vizs:
-            if isinstance(trend_vizs, list):
-                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
-                viz.extend(trend_vizs)  # Add multiple charts
-            else:
-                print(f"**tt DEBUG: Adding single trend chart to viz list")
-                viz.append(trend_vizs)  # Add single chart (fallback)
+
+    viz, insights, final_prompt, export_data = render_layout(tables,
+                                                            env.da.title,
+                                                            env.da.subtitle,
+                                                            insights_dfs,
+                                                            warning_messages,
+                                                            parameters.arguments.max_prompt,
+                                                            parameters.arguments.insight_prompt,
+                                                            parameters.arguments.table_viz_layout)
+
+    # Add the trend visualizations to the viz list
+    if trend_vizs:
+        if isinstance(trend_vizs, list):
+            print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
+            viz.extend(trend_vizs)  # Add multiple charts
         else:
-            print(f"**tt DEBUG: No trend charts returned")
+            print(f"**tt DEBUG: Adding single trend chart to viz list")
+            viz.append(trend_vizs)  # Add single chart (fallback)
+    else:
+        print(f"**tt DEBUG: No trend charts returned")
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -557,11 +559,13 @@ def create_trend_chart(env, insights=None):
             return viz_list, df  # Return both visualizations and the trend DataFrame
         else:
             print("DEBUG: No charts generated from trend analysis")
-            return None, None
+            return [], df  # Return empty list but still return the DataFrame
             
     except Exception as e:
         print(f"DEBUG: Error creating trend chart: {e}")
-        return None, None
+        import traceback
+        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        return [], None  # Return empty list for consistency
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
