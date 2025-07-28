@@ -321,12 +321,10 @@ def create_supporting_metrics_analysis(env):
         # SQL to get supporting metrics summary for DDR analysis
         sql_query = f"""
         SELECT 
-            'Supporting Metrics Analysis' as analysis_type,
-            COUNT(*) as total_transactions,
             AVG(r.checkin_count) as avg_checkin_volume,
             CAST(SUM(CASE WHEN r.damage_detected_at_checkin_flg = 1 THEN r.damage_count ELSE 0 END) AS DOUBLE PRECISION) / NULLIF(SUM(r.damage_count), 0) as damage_detection_at_checkin_rate,
             AVG(r.months_maturity_employee) as avg_employee_experience_months,
-            CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.live_checkin_flg ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) as digitalization_rate,
+            CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.live_checkin_flg ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) as live_check_in_rate,
             CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.damage_count ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) as actual_ddr1,
             AVG(r.target_ddr1) as target_ddr1,
             CAST(SUM(CASE WHEN r.checkin_count = 1 THEN r.damage_count ELSE NULL END) AS DOUBLE PRECISION) / NULLIF(SUM(CASE WHEN r.checkin_count = 1 THEN r.checkin_count ELSE NULL END), 0) - AVG(r.target_ddr1) as ddr1_vs_target_gap
@@ -352,8 +350,7 @@ def create_supporting_metrics_analysis(env):
                 'avg_checkin_volume': analysis_dict.get('avg_checkin_volume', 0),
                 'damage_detection_rate': analysis_dict.get('damage_detection_at_checkin_rate', 0),
                 'avg_employee_months': analysis_dict.get('avg_employee_experience_months', 0),
-                'digital_checkin_rate': analysis_dict.get('digitalization_rate', 0),
-                'total_transactions': int(analysis_dict.get('total_transactions', 0))
+                'live_check_in_rate': analysis_dict.get('live_check_in_rate', 0)
             }
         }
         
