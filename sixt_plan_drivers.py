@@ -87,40 +87,42 @@ logger = logging.getLogger(__name__)
             name="insight_prompt",
             parameter_type="prompt",
             description="Prompt being used for detailed insights.",
-default_value="""Create a structured DDR performance analysis with clear sections. Limit to 400 words maximum.
+default_value="""Create a concise DDR performance summary focused on actionable insights. Maximum 300 words.
 
-## Malaga Aeropuerto DDR Performance Analysis ##
+# Malaga Aeropuerto - 2019 DDR1 Performance Summary
 
-**Performance Overview:**  
-Current DDR1 is 0.233 vs target of 0.239 (-2.57% below target). Analyze performance vs target using the provided data.
+## Overall Performance
+Briefly state DDR1 actual vs target and the gap percentage.
 
-**Key Drivers:**
-Identify top performing employees and product segments from the breakout data that drive performance above or below target.
+## Key Drivers of Performance
 
-**Supporting Metrics Analysis:**
-Use ONLY the supporting metrics data provided in the facts. If monthly trend data is provided for:
-• Checkin Count (transaction volume)
-• Damage At Check In (detection rate)  
-• Live Check In Rate (digital adoption)
-• Months Maturity Employee (experience level)
+### Top Performing Employees
+List top 3 performers with their DDR1 values and highlight how they compare to average.
 
-Reference actual data values and trends. Do NOT make assumptions about data not provided.
+### Product Segment Trends
+Show performance by product type, identifying highest and lowest performing segments.
 
-**Root Cause Analysis:**
-Based on the actual data provided, explain WHY DDR is 2.57% below target:
-• Employee performance variations
-• Product segment differences  
-• Operational factors from supporting metrics
+## Supporting Metrics
+Only include if trend data is provided:
+- **Check-In Volume**: Range and seasonality patterns
+- **Damage at Check-In**: Detection efficiency trends
+- **Live Check-In Rate**: Digital adoption progress
+- **Employee Maturity**: Team experience levels
 
-**Actions:**
-• Target improvement areas based on data
-• Leverage top performer practices
+## Root Cause Analysis
+2-3 bullet points explaining the performance gap based on the data patterns.
 
-Use only facts provided. Mix narrative and bullet points. Maximum 400 words.
+## Recommended Actions
+4-5 specific, actionable recommendations such as:
+- Replicate top performer behavior through coaching
+- Focus improvement efforts on underperforming segments
+- Drive digital adoption in specific areas
+- Maintain quality during peak periods
+
+Keep it under 300 words. Be specific with data points.
 
 Facts:
-{{facts}}
-Summary:"""
+{{facts}}"""
         ),
         SkillParameter(
             name="table_viz_layout",
