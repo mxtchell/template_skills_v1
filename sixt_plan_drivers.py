@@ -134,22 +134,15 @@ Facts:
 )
 def sixt_plan_drivers(parameters: SkillInput):
     param_dict = {"periods": [], "metric": "", "metric_group": "", "limit_n": 10, "breakouts": None, "growth_type": "Y/Y", "other_filters": [], "calculated_metric_filters": None}
-    print(f"DEBUG: sixt_plan_drivers received parameters: {parameters.arguments}")
     # Update param_dict with values from parameters.arguments if they exist
     for key in param_dict:
         if hasattr(parameters.arguments, key) and getattr(parameters.arguments, key) is not None:
             param_dict[key] = getattr(parameters.arguments, key)
 
-    print(f"DEBUG: Processed param_dict: {param_dict}")
     env = SimpleNamespace(**param_dict)
     
-    print(f"DEBUG: About to run SixtMetricDriverTemplateParameterSetup with metric: {env.metric}")
     SixtMetricDriverTemplateParameterSetup(env=env)
-    
-    print(f"DEBUG: Creating SixtMetricDriver from env")
     env.da = SixtMetricDriver.from_env(env=env)
-
-    print(f"DEBUG: About to run driver analysis")
     _ = env.da.run_from_env()
 
     optional_columns = []  # vs Target is handled by renaming diff column
@@ -168,16 +161,9 @@ def sixt_plan_drivers(parameters: SkillInput):
     try:
         supporting_metrics_df = create_supporting_metrics_analysis(env)
         if supporting_metrics_df is not None:
-            print(f"DEBUG: Supporting metrics DF created with shape: {supporting_metrics_df.shape}")
-            print(f"DEBUG: Supporting metrics DF columns: {supporting_metrics_df.columns.tolist()}")
-            print(f"DEBUG: Supporting metrics DF preview: {supporting_metrics_df.head().to_dict()}")
             insights_dfs.append(supporting_metrics_df)
-        else:
-            print("DEBUG: Supporting metrics DF is None")
     except Exception as e:
-        print(f"DEBUG: Error creating supporting metrics analysis: {e}")
-        import traceback
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
+        print(f"Error creating supporting metrics analysis: {e}")
 
     warning_messages = env.da.get_warning_messages()
 
@@ -185,20 +171,12 @@ def sixt_plan_drivers(parameters: SkillInput):
     trend_vizs_data = None
     trend_metrics_df = None
     if check_vs_enabled([env.metric]):
-        print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
         trend_result = create_trend_chart(env, None)  # Pass None for insights initially
-        print(f"**tt DEBUG: create_trend_chart returned: {type(trend_result)}")
         
         # Handle both old format (just charts) and new format (charts, df)
         if isinstance(trend_result, tuple) and len(trend_result) == 2:
             trend_vizs_data, trend_metrics_df = trend_result  # Store the data for later
             if trend_metrics_df is not None:
-                print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
-                print(f"**tt DEBUG: Trend DF columns: {trend_metrics_df.columns.tolist()}")
-                print(f"**tt DEBUG: Trend DF head (first 5 rows):")
-                print(trend_metrics_df.head())
-                print(f"**tt DEBUG: Trend DF data types:")
-                print(trend_metrics_df.dtypes)
                 insights_dfs.append(trend_metrics_df)
         else:
             trend_vizs_data = trend_result
@@ -214,7 +192,6 @@ def sixt_plan_drivers(parameters: SkillInput):
 
     # Recreate trend visualizations with the generated insights
     if check_vs_enabled([env.metric]):
-        print(f"**tt DEBUG: Recreating trend charts with generated insights")
         # Now recreate the trend charts with the actual insights
         trend_result = create_trend_chart(env, insights)  # Pass the generated insights
         if isinstance(trend_result, tuple) and len(trend_result) == 2:
@@ -224,13 +201,9 @@ def sixt_plan_drivers(parameters: SkillInput):
             
         if trend_vizs:
             if isinstance(trend_vizs, list):
-                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
                 viz.extend(trend_vizs)  # Add multiple charts
             else:
-                print(f"**tt DEBUG: Adding single trend chart to viz list")
                 viz.append(trend_vizs)  # Add single chart (fallback)
-        else:
-            print(f"**tt DEBUG: No trend charts returned")
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -250,9 +223,6 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
         # Calculate YoY changes for each supporting metric
         insights = []
         
-        print(f"**zz DEBUG: Correlation analysis DF columns: {df.columns.tolist()}")
-        print(f"**zz DEBUG: Correlation analysis DF shape: {df.shape}")
-        print(f"**zz DEBUG: Sample data from DF: {df.head()}")
         
         # Group by metric and calculate yearly averages
         yearly_averages = {}
@@ -275,18 +245,14 @@ def analyze_supporting_metrics_correlation(df, current_year, previous_year, metr
                         yoy_change = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg != 0 else 0
                         yearly_averages[f"{metric}_yoy_change"] = yoy_change
                         
-                        print(f"**zz DEBUG: {metric} - {previous_year}: {previous_avg:.3f}, {current_year}: {current_avg:.3f}, YoY: {yoy_change:.1f}%")
         
         # Generate correlation insights based on business logic
         correlation_text = generate_correlation_insights(yearly_averages, current_year, previous_year)
         
-        print(f"**zz DEBUG: Generated correlation text: {correlation_text}")
         return correlation_text
         
     except Exception as e:
-        print(f"**zz DEBUG: Error in correlation analysis: {e}")
         import traceback
-        print(f"**zz DEBUG: Full traceback: {traceback.format_exc()}")
         return "Unable to perform correlation analysis on supporting metrics."
 
 def create_supporting_metrics_analysis(env):
@@ -332,7 +298,6 @@ def create_supporting_metrics_analysis(env):
         WHERE {where_clause}
         """
         
-        print(f"DEBUG: Supporting metrics SQL: {sql_query}")
         df = sql_to_df(sql_query)
         
         if df.empty:
@@ -358,14 +323,10 @@ def create_supporting_metrics_analysis(env):
         
     except Exception as e:
         import traceback
-        print(f"DEBUG: Error in create_supporting_metrics_analysis: {e}")
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
         return None
 
 def generate_correlation_insights(yearly_averages, current_year, previous_year):
     """Generate business insights from YoY correlation analysis"""
-    print(f"**zz DEBUG: yearly_averages keys: {list(yearly_averages.keys())}")
-    print(f"**zz DEBUG: yearly_averages values: {yearly_averages}")
     insights = []
     
     # Check for significant changes in key metrics
@@ -412,8 +373,6 @@ def generate_correlation_insights(yearly_averages, current_year, previous_year):
 
 def create_trend_chart(env, insights=None):
     """Create monthly trend chart for supporting metrics using AdvanceTrend"""
-    print(f"DEBUG: Creating trend chart with periods: {env.periods}")
-    
     # Extract year from periods - use first period and get full year
     if env.periods and len(env.periods) > 0:
         period = env.periods[0]
@@ -428,8 +387,6 @@ def create_trend_chart(env, insights=None):
     
     # Also get previous year for YoY comparison
     previous_year = str(int(current_year) - 1)
-    
-    print(f"DEBUG: Using current year {current_year} and previous year {previous_year} for trend analysis")
     
     # Define supporting metrics for trend analysis
     trend_metrics = [
@@ -456,7 +413,6 @@ def create_trend_chart(env, insights=None):
     trend_env.time_granularity = "month"  # Monthly granularity
     trend_env.limit_n = 10
     
-    print(f"DEBUG: Creating AdvanceTrend with periods for current year: {len(current_year_periods)} periods")
     
     try:
         # Set up trend analysis
@@ -464,18 +420,11 @@ def create_trend_chart(env, insights=None):
         trend_analysis = AdvanceTrend.from_env(env=trend_env)
         df = trend_analysis.run_from_env()
         
-        print(f"DEBUG: Trend analysis DF shape: {df.shape if df is not None else 'None'}")
-        print(f"**tt DEBUG: Trend DF columns: {df.columns.tolist() if df is not None else 'None'}")
-        print(f"**tt DEBUG: Trend DF head:\n{df.head() if df is not None else 'None'}")
         
         # Get chart variables for all chart types using display_charts like trend.py
         display_charts = trend_analysis.display_charts if hasattr(trend_analysis, 'display_charts') else {}
         charts = trend_analysis.get_dynamic_layout_chart_vars()
         
-        print(f"**tt DEBUG: display_charts keys: {list(display_charts.keys()) if display_charts else 'None'}")
-        print(f"**tt DEBUG: get_dynamic_layout_chart_vars keys: {list(charts.keys()) if charts else 'None'}")
-        print(f"**tt DEBUG: Number of display_charts: {len(display_charts) if display_charts else 0}")
-        print(f"**tt DEBUG: Number of dynamic charts: {len(charts) if charts else 0}")
         
         # Use dynamic charts which have the correct format for layout templates
         chart_source = charts if charts else display_charts
@@ -487,30 +436,11 @@ def create_trend_chart(env, insights=None):
             # Prepare base variables for chart layout
             combined_insights = insights if insights else ""
             
-            print(f"**tt DEBUG: Creating {len(chart_source)} visualizations from chart_source")
-            print(f"**tt DEBUG: Insights provided: {len(combined_insights) if combined_insights else 0} characters")
-            print(f"**tt DEBUG: chart_source type: {type(chart_source)}")
             
-            # Debug the actual chart variables
-            for chart_name, chart_data in chart_source.items():
-                print(f"**tt DEBUG: Chart '{chart_name}' data type: {type(chart_data)}")
-                if isinstance(chart_data, dict):
-                    print(f"**tt DEBUG: Chart '{chart_name}' keys: {list(chart_data.keys())}")
-                    if 'chart_vars' in chart_data:
-                        chart_vars = chart_data['chart_vars']
-                        print(f"**tt DEBUG: Chart vars keys: {list(chart_vars.keys())}")
-                        # Look for series data specifically
-                        for key, value in chart_vars.items():
-                            if 'series' in key.lower() or 'metric' in key.lower():
-                                print(f"**tt DEBUG: {key}: {str(value)[:200]}...")
-                else:
-                    print(f"**tt DEBUG: Chart '{chart_name}' direct data: {str(chart_data)[:200]}...")
             
             # Create a visualization for each chart type  
             for i, (chart_name, chart_vars) in enumerate(chart_source.items()):
                 # chart_source now contains chart_vars directly from get_dynamic_layout_chart_vars
-                print(f"**tt DEBUG: Processing chart_vars directly for {chart_name}")
-                print(f"**tt DEBUG: Processing chart {i+1}: {chart_name}")
                 
                 tab_vars = {
                     "headline": f"Supporting Metrics Trends - {current_year}",
@@ -524,48 +454,29 @@ def create_trend_chart(env, insights=None):
                 chart_vars["footer"] = f"*{chart_vars.get('footer', 'Monthly trend data')}"
                 chart_vars["hide_growth_chart"] = False  # ENSURE growth charts are enabled
                 
-                # Debug what we're passing to the layout
                 layout_vars = {**tab_vars, **chart_vars}
-                print(f"**tt DEBUG: Layout variables being passed to wire_layout:")
-                for key, value in layout_vars.items():
-                    if isinstance(value, (list, dict)):
-                        print(f"**tt DEBUG:   {key}: {type(value)} with {len(value) if hasattr(value, '__len__') else 'N/A'} items") 
-                        if 'series' in key.lower():
-                            print(f"**tt DEBUG:     Series data: {str(value)[:500]}...")
-                    else:
-                        print(f"**tt DEBUG:   {key}: {str(value)[:100]}...")
                 
                 # Render chart using default trend chart layout
                 rendered = wire_layout(json.loads(default_trend_chart_layout), layout_vars)
                 viz_list.append(SkillVisualization(title=f"Supporting Metrics - {chart_name}", layout=rendered))
-                print(f"**tt DEBUG: Successfully created visualization for {chart_name}")
             
-            print(f"**tt DEBUG: Returning {len(viz_list)} visualizations and trend DF")
             return viz_list, df  # Return both visualizations and the trend DataFrame
         else:
-            print("DEBUG: No charts generated from trend analysis")
+            print("No charts generated from trend analysis")
             return [], df  # Return empty list but still return the DataFrame
             
     except Exception as e:
-        print(f"DEBUG: Error creating trend chart: {e}")
         import traceback
-        print(f"DEBUG: Traceback: {traceback.format_exc()}")
         return [], None  # Return empty list for consistency
 
 def render_layout(tables, title, subtitle, insights_dfs, warnings, max_prompt, insight_prompt, viz_layout):
     facts = []
-    print(f"**tt DEBUG: render_layout received {len(insights_dfs)} DataFrames for insights")
     for i, i_df in enumerate(insights_dfs):
-        print(f"**tt DEBUG: Processing insights DF {i+1} with shape: {i_df.shape}, columns: {i_df.columns.tolist()}")
         facts.append(i_df.to_dict(orient='records'))
 
     insight_template = jinja2.Template(insight_prompt).render(**{"facts": facts})
     max_response_prompt = jinja2.Template(max_prompt).render(**{"facts": facts})
     
-    print(f"**tt DEBUG: Final insight template contains {len(str(insight_template))} characters")
-    print(f"**tt DEBUG: Facts array contains {len(facts)} fact groups")
-    for i, fact_group in enumerate(facts):
-        print(f"**tt DEBUG: Fact group {i+1} has {len(fact_group)} records")
 
     # adding insights
     ar_utils = ArUtils()
@@ -658,37 +569,26 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
         super().__init__(sql_exec, df_provider, sp)
     
     def run(self, table, metrics, period_filters, query_filters=[], table_specific_filters={}, driver_metrics=[], view="", include_sparklines=True, two_year_filter=None, period_col_granularity='day', metric_props={}, add_impacts=False, impact_formulas={}):
-        print(f"DEBUG: SixtMetricTreeAnalysis.run called with metrics: {metrics}")
-        print(f"DEBUG: period_filters: {period_filters}")
-        print(f"DEBUG: check_vs_enabled result: {check_vs_enabled(metrics)}")
         
         # For vs target metrics, ensure we have two period filters to prevent IndexError
         modified_period_filters = period_filters
         if check_vs_enabled(metrics) and len(period_filters) == 1:
-            print(f"DEBUG: Adding duplicate period filter for vs target metrics")
             # Duplicate the current period filter to prevent IndexError
             modified_period_filters = period_filters + period_filters
         
         metric_df = super().run(table, metrics, modified_period_filters, query_filters, table_specific_filters, driver_metrics, view, include_sparklines, two_year_filter, period_col_granularity, metric_props, add_impacts, impact_formulas)
         
         if not check_vs_enabled(metrics):
-            print(f"DEBUG: Not vs enabled metrics, returning standard metric_df")
             return metric_df
         
-        print(f"DEBUG: Adding vs Target column for metrics: {metrics}")
         additional_filters = table_specific_filters.get('default', [])
         target_metrics = [f"target_{metric}" for metric in metrics]
         target_metrics = [self.helper.get_metric_prop(m, metric_props) for m in target_metrics]
-        print(f"DEBUG: Target metrics to pull: {target_metrics}")
         
         try:
             target_df = self.pull_data_func(metrics=target_metrics, filters=query_filters+additional_filters+[period_filters[0]])
-            print(f"DEBUG: Target data retrieved successfully")
-            print(f"DEBUG: Target df shape: {target_df.shape}")
-            print(f"DEBUG: Target df columns: {target_df.columns.tolist()}")
 
             # For vs target metrics, set prev to target value and calculate difference
-            print(f"DEBUG: Setting prev column to target values for vs target metrics")
             for metric in metrics:
                 metric_df.loc[metric, 'prev'] = target_df[f"target_{metric}"].iloc[0]
                 metric_df.loc[metric, 'diff'] = metric_df.loc[metric, 'curr'] - target_df[f"target_{metric}"].iloc[0]
@@ -699,9 +599,7 @@ class SixtMetricTreeAnalysis(MetricTreeAnalysis):
                 axis=1
             )
 
-            print(f"DEBUG: Added vs Target column successfully")
         except Exception as e:
-            print(f"DEBUG: Error adding vs Target column: {e}")
             raise
 
         return metric_df
@@ -714,13 +612,10 @@ class SixtBreakoutDrivers(BreakoutDrivers):
         super().__init__(dim_hierarchy, dim_val_map, sql_exec, df_provider, sp)
 
     def run(self, table, metric, breakouts, period_filters, query_filters=[], table_specific_filters={}, top_n=5, include_sparklines=True, two_year_filter=None, period_col_granularity='day', view="", growth_type="", metric_props={}, dim_props={}):
-        print(f"DEBUG: SixtBreakoutDrivers.run called with metric: {metric}")
-        print(f"DEBUG: period_filters length: {len(period_filters)}")
         
         # For vs target metrics, ensure we have two period filters to prevent IndexError
         modified_period_filters = period_filters
         if check_vs_enabled([metric]) and len(period_filters) == 1:
-            print(f"DEBUG: Adding duplicate period filter for vs target metric")
             # Duplicate the current period filter to prevent IndexError
             modified_period_filters = period_filters + period_filters
         
@@ -730,7 +625,6 @@ class SixtBreakoutDrivers(BreakoutDrivers):
             return breakout_df
         
         # Add vs Target column and set target values
-        print(f"DEBUG: Adding vs Target column for breakouts")
         additional_filters = table_specific_filters.get('default', [])
         target_metric = f"target_{metric}"
         target_metric = self.helper.get_metric_prop(target_metric, metric_props)
@@ -745,7 +639,6 @@ class SixtBreakoutDrivers(BreakoutDrivers):
         target_df = pd.concat(dfs)
 
         # For vs target metrics, set prev to target value and calculate difference
-        print(f"DEBUG: Setting prev column to target values for vs target breakouts")
         breakout_df['prev'] = breakout_df.apply(
             lambda row: target_df[target_df.index == row.name][f"target_{metric}"].iloc[0], 
             axis=1
@@ -807,18 +700,11 @@ class SixtMetricDriver(DriverAnalysis):
         # rename columns - use different label for vs target metrics
         # Check if this is vs target analysis using check_vs_enabled function
         current_metric = getattr(self, 'metric', None)
-        print(f"DEBUG: self.metric = {current_metric}")
-        print(f"DEBUG: check_vs_enabled result = {check_vs_enabled([current_metric] if current_metric else [])}")
-        print(f"DEBUG: VS_ENABLED_METRICS = {VS_ENABLED_METRICS}")
         
         if check_vs_enabled([current_metric] if current_metric else []):
-            print("DEBUG: Using vs target column names")
-            print(f"DEBUG: Before rename - metric_df columns: {metric_df.columns.tolist()}")
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Target', 'diff': 'vs Target', 'growth': '% Growth'})
-            print(f"DEBUG: After rename - metric_df columns: {metric_df.columns.tolist()}")
         else:
-            print("DEBUG: Using standard column names")
             metric_df = metric_df.rename(
                 columns={'curr': 'Value', 'prev': 'Prev Value', 'diff': 'Change', 'growth': '% Growth'})
         
@@ -890,7 +776,6 @@ class SixtMetricDriver(DriverAnalysis):
                 if 'vs Target' in b_df.columns:
                     vs_target_cols = [col for col in b_df.columns if col == 'vs Target']
                     if len(vs_target_cols) > 1:
-                        print(f"DEBUG: Found {len(vs_target_cols)} duplicate 'vs Target' columns, keeping first")
                         b_df = b_df.loc[:, ~b_df.columns.duplicated()]
             else:
                 b_df = b_df.rename(
@@ -975,7 +860,6 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
             # Only add comparison period filters if NOT using vs target comparison
             if comp_start_date and comp_end_date and not check_vs_enabled([env.metric]):
-                print(f"DEBUG: Adding comparison period filter for non-vs-target metric")
                 period_filters.append(
                     { "col": period_col, "op": "BETWEEN", "val": f"'{comp_start_date}' AND '{comp_end_date}'" }
                 )
@@ -991,7 +875,6 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
                 elif self.is_date_range_partially_out_of_bounds(comp_start_date, comp_end_date):
                     compare_date_warning_msg = "Data is only avaiable for partial comparison period. This gap might impact the analysis results and insights."
             elif check_vs_enabled([env.metric]):
-                print(f"DEBUG: Skipping comparison period for vs target metric: {env.metric}")
                 comp_start_date = None
                 comp_end_date = None
 
@@ -1054,11 +937,9 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
 
         # set growth type - default to None for vs target metrics
         if check_vs_enabled([env.metric]):
-            print(f"DEBUG: Setting growth_type to None for vs target metric: {env.metric}")
             driver_analysis_parameters["growth_type"] = "None"
             env.growth_type = "None"  # Also set on env to prevent comparison period logic
         else:
-            print(f"DEBUG: Using standard growth_type: {env.growth_type}")
             driver_analysis_parameters["growth_type"] = env.growth_type
 
         # use sparklines
