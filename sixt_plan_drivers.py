@@ -180,7 +180,8 @@ def sixt_plan_drivers(parameters: SkillInput):
     warning_messages = env.da.get_warning_messages()
 
     # Create trend charts and data BEFORE render_layout so it's included in insights
-    trend_vizs = []
+    trend_vizs_data = None
+    trend_metrics_df = None
     if check_vs_enabled([env.metric]):
         print(f"**tt DEBUG: Creating supporting metrics trend charts with YoY comparison")
         trend_result = create_trend_chart(env, None)  # Pass None for insights initially
@@ -188,7 +189,7 @@ def sixt_plan_drivers(parameters: SkillInput):
         
         # Handle both old format (just charts) and new format (charts, df)
         if isinstance(trend_result, tuple) and len(trend_result) == 2:
-            trend_vizs, trend_metrics_df = trend_result
+            trend_vizs_data, trend_metrics_df = trend_result  # Store the data for later
             if trend_metrics_df is not None:
                 print(f"**tt DEBUG: Adding trend metrics DF to insights with shape: {trend_metrics_df.shape}")
                 print(f"**tt DEBUG: Trend DF columns: {trend_metrics_df.columns.tolist()}")
@@ -198,7 +199,7 @@ def sixt_plan_drivers(parameters: SkillInput):
                 print(trend_metrics_df.dtypes)
                 insights_dfs.append(trend_metrics_df)
         else:
-            trend_vizs = trend_result
+            trend_vizs_data = trend_result
 
     viz, insights, final_prompt, export_data = render_layout(tables,
                                                             env.da.title,
@@ -209,16 +210,25 @@ def sixt_plan_drivers(parameters: SkillInput):
                                                             parameters.arguments.insight_prompt,
                                                             parameters.arguments.table_viz_layout)
 
-    # Add the trend visualizations to the viz list
-    if trend_vizs:
-        if isinstance(trend_vizs, list):
-            print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
-            viz.extend(trend_vizs)  # Add multiple charts
+    # Recreate trend visualizations with the generated insights
+    if check_vs_enabled([env.metric]):
+        print(f"**tt DEBUG: Recreating trend charts with generated insights")
+        # Now recreate the trend charts with the actual insights
+        trend_result = create_trend_chart(env, insights)  # Pass the generated insights
+        if isinstance(trend_result, tuple) and len(trend_result) == 2:
+            trend_vizs, _ = trend_result  # We already have the DF, just need the vizs
         else:
-            print(f"**tt DEBUG: Adding single trend chart to viz list")
-            viz.append(trend_vizs)  # Add single chart (fallback)
-    else:
-        print(f"**tt DEBUG: No trend charts returned")
+            trend_vizs = trend_result
+            
+        if trend_vizs:
+            if isinstance(trend_vizs, list):
+                print(f"**tt DEBUG: Adding {len(trend_vizs)} trend charts to viz list")
+                viz.extend(trend_vizs)  # Add multiple charts
+            else:
+                print(f"**tt DEBUG: Adding single trend chart to viz list")
+                viz.append(trend_vizs)  # Add single chart (fallback)
+        else:
+            print(f"**tt DEBUG: No trend charts returned")
 
     return SkillOutput(
         final_prompt=final_prompt,
@@ -504,6 +514,7 @@ def create_trend_chart(env, insights=None):
             combined_insights = insights if insights else ""
             
             print(f"**tt DEBUG: Creating {len(chart_source)} visualizations from chart_source")
+            print(f"**tt DEBUG: Insights provided: {len(combined_insights) if combined_insights else 0} characters")
             print(f"**tt DEBUG: chart_source type: {type(chart_source)}")
             
             # Debug the actual chart variables
