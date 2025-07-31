@@ -829,7 +829,7 @@ class SixtMetricDriverTemplateParameterSetup(DriverAnalysisTemplateParameterSetu
         driver_analysis_parameters["breakouts"], breakout_pills = self.parse_breakout_dims(env.breakouts)
 
         # guardrails for unsupported calculated filters
-        calculated_metric_filters = env.calculated_metric_filters if hasattr(env, "calculated_metric_filters") else None
+        calculated_metric_filters = env.calculated_metric_filters if hasattr(env, "calculated_metric_filters") and env.calculated_metric_filters is not None else []
         query, llm_notes, _, _ = self.get_metric_computation_filters([env.metric], calculated_metric_filters, "None", env.metric_props)
         if query:
             self.get_unsupported_filter_message(llm_notes, 'metric drivers')
