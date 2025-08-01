@@ -265,7 +265,7 @@ def load_document_sources():
                             res = {
                                 "file_name": file_name,
                                 "text": chunk.get("Text", ""),
-                                "description": chunk.get("Text", "")[:200] + "..." if len(chunk.get("Text", "")) > 200 else chunk.get("Text", ""),
+                                "description": str(chunk.get("Text", ""))[:200] + "..." if len(str(chunk.get("Text", ""))) > 200 else str(chunk.get("Text", "")),
                                 "chunk_index": chunk.get("Page", 1),
                                 "citation": file_name
                             }
@@ -312,7 +312,7 @@ def find_matching_documents(user_question, topics, loaded_sources, base_url, max
     matches.sort(key=lambda x: x['match_score'], reverse=True)
     
     # Convert to SimpleNamespace for compatibility
-    return [SimpleNamespace(**match) for match in matches[:max_sources]]
+    return [SimpleNamespace(**match) for match in matches[:int(max_sources)]]
 
 def calculate_simple_relevance(text, search_terms):
     """Calculate simple relevance score (placeholder for embedding similarity)"""
@@ -360,7 +360,8 @@ def generate_rag_response(user_question, docs):
         ]
         
         for i, doc in enumerate(docs):
-            content_parts.append(f"<p>{doc.text[:200]}...<sup>[{i+1}]</sup></p>")
+            text_preview = str(doc.text)[:200] if doc.text else ""
+            content_parts.append(f"<p>{text_preview}...<sup>[{i+1}]</sup></p>")
         
         content = "\n".join(content_parts)
         
@@ -368,7 +369,8 @@ def generate_rag_response(user_question, docs):
         references = []
         for i, doc in enumerate(docs):
             # Create preview text (first 120 characters)
-            preview_text = doc.text[:120] + "..." if len(doc.text) > 120 else doc.text
+            doc_text = str(doc.text) if doc.text else ""
+            preview_text = doc_text[:120] + "..." if len(doc_text) > 120 else doc_text
             
             ref = {
                 'number': i + 1,
