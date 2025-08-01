@@ -60,6 +60,29 @@ logger = logging.getLogger(__name__)
 def document_rag_explorer(parameters: SkillInput):
     """Main skill function for document RAG exploration"""
     
+    # Debug: Inspect parameters object for resource access
+    logger.info(f"DEBUG: parameters type: {type(parameters)}")
+    logger.info(f"DEBUG: parameters attributes: {dir(parameters)}")
+    logger.info(f"DEBUG: parameters.arguments attributes: {dir(parameters.arguments)}")
+    
+    # Check for any context or resource-related attributes
+    for attr in dir(parameters):
+        if not attr.startswith('_'):
+            try:
+                value = getattr(parameters, attr)
+                logger.info(f"DEBUG: parameters.{attr} = {value} (type: {type(value)})")
+                if hasattr(value, '__dict__'):
+                    logger.info(f"DEBUG: parameters.{attr} attributes: {dir(value)}")
+            except Exception as e:
+                logger.info(f"DEBUG: Could not access parameters.{attr}: {e}")
+    
+    # Check environment variables
+    import os
+    logger.info(f"DEBUG: Environment variables:")
+    for key, value in os.environ.items():
+        if any(keyword in key.upper() for keyword in ['SKILL', 'COPILOT', 'TENANT', 'AR_', 'ARTIFACTS']):
+            logger.info(f"DEBUG: {key} = {value}")
+    
     # Get parameters
     user_question = parameters.arguments.user_question
     base_url = parameters.arguments.base_url
@@ -172,6 +195,13 @@ def load_document_sources():
     loaded_sources = []
     
     try:
+        # Try to import ar_paths and see if it's available in code skills
+        try:
+            from ar_paths import ARTIFACTS_PATH
+            logger.info(f"DEBUG: Successfully imported ARTIFACTS_PATH: {ARTIFACTS_PATH}")
+        except ImportError as e:
+            logger.info(f"DEBUG: Could not import ar_paths: {e}")
+            ARTIFACTS_PATH = None
         # Debug: Show current working directory and __file__ location
         current_file = os.path.abspath(__file__)
         current_dir = os.path.dirname(current_file)
