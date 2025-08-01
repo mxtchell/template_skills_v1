@@ -1,13 +1,14 @@
 from __future__ import annotations
+from types import SimpleNamespace
 from typing import List, Optional, Dict, Any
+
 import pandas as pd
 from skill_framework import SkillInput, SkillVisualization, skill, SkillParameter, SkillOutput, ParameterDisplayDescription
 from skill_framework.skills import ExportData
-from skill_framework.types import Html
+
 import requests
 import json
 import os
-from types import SimpleNamespace
 from jinja2 import Template
 import base64
 import io
