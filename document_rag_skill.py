@@ -18,195 +18,6 @@ import html
 
 logger = logging.getLogger(__name__)
 
-# HTML Templates
-narrative_prompt = """
-Answer the user's question based on the sources provided by writing a short headline between <title> tags then detail the supporting info for that answer in HTML between <content> tags.  The content should contain citation references like <sup>[source number]</sup> where appropriate.  Conclude with a list of the references in <reference> tags like the example.
-
-Base your summary solely on the provided facts, avoiding assumptions.
-
-### EXAMPLE
-example_question: Why are clouds so white
-
-====== Example Source 1 ====
-File and page: cloud_info_doc.pdf page 1
-Description: A document about clouds
-Citation: https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=1
-Content: Clouds appear white because of how they interact with light. They consist of countless tiny water droplets or ice crystals that scatter all colors of light equally. When sunlight, which contains all colors of the visible spectrum, hits these particles, it scatters in all directions. This scattered light combines to appear white to our eyes. 
-====== example Source 2 ====
-File and page: cloud_info_doc.pdf page 3
-Description: A document about clouds
-Citation: https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=3
-Content: clouds contain millions of water droplets or ice crystals that act as tiny reflectors. the size of the water droplets or ice crystals is large enough to scatter all colors of light, unlike the sky which scatters blue light more. these particles scatter all wavelengths of visible light equally, resulting in white light. 
-
-example_assistant: <title>The reason for white clouds</title>
-<content>
-    <p>Clouds appear white because of the way they interact with light. They are composed of tiny water droplets or ice crystals that scatter all colors of light equally. When sunlight, which contains all colors of the visible spectrum, hits these particles, they scatter the light in all directions. This scattered light combines to appear white to our eyes.<sup>[1]</sup></p>
-    
-    <ul>
-        <li>Clouds contain millions of water droplets or ice crystals that act as tiny reflectors.<sup>[2]</sup></li>
-        <li>These particles scatter all wavelengths of visible light equally, resulting in white light.<sup>[2]</sup></li>
-        <li>The size of the water droplets or ice crystals is large enough to scatter all colors of light, unlike the sky which scatters blue light more.<sup>[2]</sup></li>
-    </ul>
-</content>
-<reference number=1 url="https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=1" doc="cloud_info_doc.pdf" page=1>Clouds are made of tiny droplets</reference>
-<reference number=2 url="https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=3" doc="cloud_info_doc.pdf" page=3>Ice crystals scatter all colors</reference>
-
-### The User's Question to Answer 
-Answer this question: {{user_query}}
-
-{{facts}}"""
-
-# Main response template (without sources)
-main_response_template = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-        }
-        .headline {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e1e5e9;
-            padding-bottom: 10px;
-        }
-        .content {
-            margin-bottom: 40px;
-            font-size: 16px;
-            line-height: 1.7;
-        }
-        .content p {
-            margin-bottom: 16px;
-        }
-        sup {
-            color: #0066cc;
-            font-weight: 600;
-        }
-    </style>
-</head>
-<body>
-    <div class="headline">{{ title }}</div>
-    <div class="content">
-        {{ content|safe }}
-    </div>
-</body>
-</html>"""
-
-# Sources template (separate tab)
-sources_template = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sources</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-        }
-        .sources-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 8px;
-        }
-        .source-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            padding: 16px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-            transition: box-shadow 0.2s ease;
-        }
-        .source-item:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .source-thumbnail {
-            flex-shrink: 0;
-            margin-right: 16px;
-        }
-        .source-thumbnail img {
-            width: 120px;
-            height: 150px;
-            object-fit: cover;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f5f5f5;
-        }
-        .source-info {
-            flex: 1;
-        }
-        .source-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .source-title a {
-            color: #0066cc;
-            text-decoration: none;
-            font-size: 16px;
-        }
-        .source-title a:hover {
-            text-decoration: underline;
-        }
-        .source-meta {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-        .source-preview {
-            color: #555;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-top: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div class="sources-title">Document Sources</div>
-    {% for ref in references %}
-    <div class="source-item">
-        <div class="source-thumbnail">
-            {% if ref.thumbnail %}
-            <img src="data:image/png;base64,{{ ref.thumbnail }}" alt="Document thumbnail">
-            {% else %}
-            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDEyMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCA2MEg4MFY2NEg0MFY2MFpNNDAgNzJIODBWNzZINDBWNzJaTTQwIDg0SDY0Vjg4SDQwVjg0WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K" alt="Document placeholder">
-            {% endif %}
-        </div>
-        <div class="source-info">
-            <div class="source-title">
-                <a href="{{ ref.url }}" target="_blank">[{{ ref.number }}] {{ ref.text }}</a>
-            </div>
-            <div class="source-meta">{{ ref.src }}, Page {{ ref.page }}</div>
-            {% if ref.preview %}
-            <div class="source-preview">{{ ref.preview }}</div>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-</body>
-</html>"""
-
-
 @skill(
     name="Document RAG Explorer",
     llm_name="document_rag_explorer",
@@ -257,8 +68,9 @@ def document_rag_explorer(parameters: SkillInput):
     list_of_topics = getattr(parameters.globals, 'list_of_topics', [])
     
     # Initialize results
-    responses = []
-    tab_titles = []
+    main_html = ""
+    sources_html = ""
+    title = "Document Analysis"
     
     try:
         # Load document sources from pack.json
@@ -343,6 +155,22 @@ def document_rag_explorer(parameters: SkillInput):
         visualizations=visualizations,
         export_data=[]
     )
+
+# Test the skill
+if __name__ == '__main__':
+    skill_input = document_rag_explorer.create_input(
+        arguments={
+            "user_question": "What information is available about clouds?",
+            "base_url": "https://example.com/kb/",
+            "max_sources": 3,
+            "match_threshold": 0.3
+        }
+    )
+    out = document_rag_explorer(skill_input)
+    print(f"Narrative: {out.narrative}")
+    print(f"Visualizations: {len(out.visualizations)}")
+
+# Helper Functions and Templates
 
 def load_document_sources():
     """Load document sources from pack.json in skill resources"""
@@ -530,15 +358,191 @@ def force_ascii_replace(html_string):
     
     return cleaned
 
-# Test the skill
-if __name__ == '__main__':
-    skill_input = document_rag_explorer.create_input(
-        arguments={
-            "user_question": "What information is available about clouds?",
-            "max_sources": 3,
-            "match_threshold": 0.3
+# HTML Templates
+
+narrative_prompt = """
+Answer the user's question based on the sources provided by writing a short headline between <title> tags then detail the supporting info for that answer in HTML between <content> tags.  The content should contain citation references like <sup>[source number]</sup> where appropriate.  Conclude with a list of the references in <reference> tags like the example.
+
+Base your summary solely on the provided facts, avoiding assumptions.
+
+### EXAMPLE
+example_question: Why are clouds so white
+
+====== Example Source 1 ====
+File and page: cloud_info_doc.pdf page 1
+Description: A document about clouds
+Citation: https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=1
+Content: Clouds appear white because of how they interact with light. They consist of countless tiny water droplets or ice crystals that scatter all colors of light equally. When sunlight, which contains all colors of the visible spectrum, hits these particles, it scatters in all directions. This scattered light combines to appear white to our eyes. 
+====== example Source 2 ====
+File and page: cloud_info_doc.pdf page 3
+Description: A document about clouds
+Citation: https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=3
+Content: clouds contain millions of water droplets or ice crystals that act as tiny reflectors. the size of the water droplets or ice crystals is large enough to scatter all colors of light, unlike the sky which scatters blue light more. these particles scatter all wavelengths of visible light equally, resulting in white light. 
+
+example_assistant: <title>The reason for white clouds</title>
+<content>
+    <p>Clouds appear white because of the way they interact with light. They are composed of tiny water droplets or ice crystals that scatter all colors of light equally. When sunlight, which contains all colors of the visible spectrum, hits these particles, they scatter the light in all directions. This scattered light combines to appear white to our eyes.<sup>[1]</sup></p>
+    
+    <ul>
+        <li>Clouds contain millions of water droplets or ice crystals that act as tiny reflectors.<sup>[2]</sup></li>
+        <li>These particles scatter all wavelengths of visible light equally, resulting in white light.<sup>[2]</sup></li>
+        <li>The size of the water droplets or ice crystals is large enough to scatter all colors of light, unlike the sky which scatters blue light more.<sup>[2]</sup></li>
+    </ul>
+</content>
+<reference number=1 url="https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=1" doc="cloud_info_doc.pdf" page=1>Clouds are made of tiny droplets</reference>
+<reference number=2 url="https://superstoredev.local.answerrocket.com:8080/apps/chat/knowledge-base/5eea3d30-8e9e-4603-ba27-e12f7d51e372#page=3" doc="cloud_info_doc.pdf" page=3>Ice crystals scatter all colors</reference>
+
+### The User's Question to Answer 
+Answer this question: {{user_query}}
+
+{{facts}}"""
+
+# Main response template (without sources)
+main_response_template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
         }
-    )
-    out = document_rag_explorer(skill_input)
-    print(f"Narrative: {out.narrative}")
-    print(f"Visualizations: {len(out.visualizations)}")
+        .headline {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e1e5e9;
+            padding-bottom: 10px;
+        }
+        .content {
+            margin-bottom: 40px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        .content p {
+            margin-bottom: 16px;
+        }
+        sup {
+            color: #0066cc;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="headline">{{ title }}</div>
+    <div class="content">
+        {{ content|safe }}
+    </div>
+</body>
+</html>"""
+
+# Sources template (separate tab)
+sources_template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sources</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .sources-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+        }
+        .source-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding: 16px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            transition: box-shadow 0.2s ease;
+        }
+        .source-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .source-thumbnail {
+            flex-shrink: 0;
+            margin-right: 16px;
+        }
+        .source-thumbnail img {
+            width: 120px;
+            height: 150px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+        .source-info {
+            flex: 1;
+        }
+        .source-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .source-title a {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .source-title a:hover {
+            text-decoration: underline;
+        }
+        .source-meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .source-preview {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sources-title">Document Sources</div>
+    {% for ref in references %}
+    <div class="source-item">
+        <div class="source-thumbnail">
+            {% if ref.thumbnail %}
+            <img src="data:image/png;base64,{{ ref.thumbnail }}" alt="Document thumbnail">
+            {% else %}
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDEyMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCA2MEg4MFY2NEg0MFY2MFpNNDAgNzJIODBWNzZINDBWNzJaTTQwIDg0SDY0Vjg4SDQwVjg0WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K" alt="Document placeholder">
+            {% endif %}
+        </div>
+        <div class="source-info">
+            <div class="source-title">
+                <a href="{{ ref.url }}" target="_blank">[{{ ref.number }}] {{ ref.text }}</a>
+            </div>
+            <div class="source-meta">{{ ref.src }}, Page {{ ref.page }}</div>
+            {% if ref.preview %}
+            <div class="source-preview">{{ ref.preview }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</body>
+</html>"""
