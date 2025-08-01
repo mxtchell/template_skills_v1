@@ -156,20 +156,6 @@ def document_rag_explorer(parameters: SkillInput):
         export_data=[]
     )
 
-# Test the skill
-if __name__ == '__main__':
-    skill_input = document_rag_explorer.create_input(
-        arguments={
-            "user_question": "What information is available about clouds?",
-            "base_url": "https://example.com/kb/",
-            "max_sources": 3,
-            "match_threshold": 0.3
-        }
-    )
-    out = document_rag_explorer(skill_input)
-    print(f"Narrative: {out.narrative}")
-    print(f"Visualizations: {len(out.visualizations)}")
-
 # Helper Functions and Templates
 
 def load_document_sources():
@@ -546,3 +532,16 @@ sources_template = """<!DOCTYPE html>
     {% endfor %}
 </body>
 </html>"""
+
+if __name__ == '__main__':
+    skill_input = document_rag_explorer.create_input(
+        arguments={
+            "user_question": "What information is available about clouds?",
+            "base_url": "https://example.com/kb/",
+            "max_sources": 3,
+            "match_threshold": 0.3
+        }
+    )
+    out = document_rag_explorer(skill_input)
+    print(f"Narrative: {out.narrative}")
+    print(f"Visualizations: {len(out.visualizations)}")
