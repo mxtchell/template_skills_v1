@@ -40,16 +40,19 @@ logger = logging.getLogger(__name__)
         ),
         SkillParameter(
             name="max_sources",
+            parameter_type="number",
             description="Maximum number of source documents to include",
             default_value=5
         ),
         SkillParameter(
             name="match_threshold",
+            parameter_type="number",
             description="Minimum similarity score for document matching (0-1)",
-            default_value=0.3
+            default_value=0.1
         ),
         SkillParameter(
             name="max_characters",
+            parameter_type="number",
             description="Maximum characters to include from sources",
             default_value=3000
         ),
@@ -58,6 +61,12 @@ logger = logging.getLogger(__name__)
             parameter_type="prompt",
             description="Prompt for the insights section (left panel)",
             default_value="Thank you for your question! I've searched through the available documents in the knowledge base. Please check the response and sources tabs above for detailed analysis with citations and document references. Feel free to ask follow-up questions if you need clarification on any of the findings."
+        ),
+        SkillParameter(
+            name="visualization_layout",
+            parameter_type="visualization",
+            description="The visualization layout template for the artifact panel",
+            default_value=main_response_template
         )
     ]
 )
@@ -317,10 +326,31 @@ def calculate_simple_relevance(text, search_terms):
     score = 0.0
     
     for term in search_terms:
-        if term and term.lower() in text_lower:
-            # Count occurrences and normalize
-            occurrences = text_lower.count(term.lower())
-            score += min(occurrences * 0.1, 0.5)
+        if not term:
+            continue
+            
+        term_lower = term.lower()
+        # Split term into individual words for better matching
+        words = term_lower.split()
+        
+        # Check for exact term match first (higher score)
+        if term_lower in text_lower:
+            occurrences = text_lower.count(term_lower)
+            score += min(occurrences * 0.3, 0.6)
+        
+        # Check for individual word matches (lower score but more inclusive)
+        word_matches = 0
+        for word in words:
+            if len(word) > 2 and word in text_lower:  # Skip very short words
+                word_matches += 1
+        
+        if word_matches > 0:
+            word_score = (word_matches / len(words)) * 0.2
+            score += word_score
+    
+    # Always return at least a small score if text exists (fallback)
+    if score == 0.0 and text.strip():
+        score = 0.1
     
     return min(score, 1.0)
 
