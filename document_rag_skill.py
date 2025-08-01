@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
         ),
         SkillParameter(
             name="base_url",
+            parameter_type="code",
             description="Base URL for document links (e.g., https://your-domain.com/knowledge-base/)",
             required=True
         ),
@@ -57,6 +58,7 @@ logger = logging.getLogger(__name__)
         ),
         SkillParameter(
             name="max_prompt",
+            parameter_type="prompt",
             description="Prompt for the insights section (left panel)",
             default_value="Thank you for your question! I've searched through the available documents in the knowledge base. Please check the response and sources tabs above for detailed analysis with citations and document references. Feel free to ask follow-up questions if you need clarification on any of the findings."
         )
@@ -121,20 +123,30 @@ def document_rag_explorer(parameters: SkillInput):
             
             # Create main response HTML (without sources section)
             if response_data:
-                main_html = force_ascii_replace(
-                    Template(main_response_template).render(
-                        title=response_data['title'],
-                        content=response_data['content']
+                try:
+                    main_html = force_ascii_replace(
+                        Template(main_response_template).render(
+                            title=response_data['title'],
+                            content=response_data['content']
+                        )
                     )
-                )
-                
-                # Create separate sources HTML
-                sources_html = force_ascii_replace(
-                    Template(sources_template).render(
-                        references=response_data['references']
+                    logger.info(f"DEBUG: Generated main HTML, length: {len(main_html)}")
+                    
+                    # Create separate sources HTML
+                    sources_html = force_ascii_replace(
+                        Template(sources_template).render(
+                            references=response_data['references']
+                        )
                     )
-                )
-                title = response_data['title']
+                    logger.info(f"DEBUG: Generated sources HTML, length: {len(sources_html)}")
+                    title = response_data['title']
+                except Exception as e:
+                    logger.error(f"DEBUG: Error rendering HTML templates: {str(e)}")
+                    import traceback
+                    logger.error(f"DEBUG: Template error traceback: {traceback.format_exc()}")
+                    main_html = f"<p>Error rendering content: {str(e)}</p>"
+                    sources_html = "<p>Error rendering sources</p>"
+                    title = "Template Error"
             else:
                 main_html = "<p>Error generating response from documents.</p>"
                 sources_html = "<p>Error loading sources</p>"
