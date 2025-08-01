@@ -54,6 +54,11 @@ logger = logging.getLogger(__name__)
             name="max_characters",
             description="Maximum characters to include from sources",
             default_value=3000
+        ),
+        SkillParameter(
+            name="max_prompt",
+            description="Prompt for the insights section (left panel)",
+            default_value="Thank you for your question! I've searched through the available documents in the knowledge base. Please check the response and sources tabs above for detailed analysis with citations and document references. Feel free to ask follow-up questions if you need clarification on any of the findings."
         )
     ]
 )
@@ -66,6 +71,7 @@ def document_rag_explorer(parameters: SkillInput):
     max_sources = parameters.arguments.max_sources or 5
     match_threshold = parameters.arguments.match_threshold or 0.3
     max_characters = parameters.arguments.max_characters or 3000
+    max_prompt = parameters.arguments.max_prompt
     
     # Initialize empty topics list (globals not available in SkillInput)
     list_of_topics = []
@@ -152,15 +158,9 @@ def document_rag_explorer(parameters: SkillInput):
         )
     ]
     
-    # Return skill output with acknowledgment-only narrative
-    doc_count = len(docs) if 'docs' in locals() else 0
-    if doc_count > 0:
-        narrative = f"Thank you for your question! I've found {doc_count} relevant documents in the knowledge base. Please check the response and sources tabs above for the detailed analysis. Feel free to ask follow-up questions if you need clarification on any of the findings."
-    else:
-        narrative = "Thank you for your question! I wasn't able to find relevant documents in the knowledge base for this query. You might try rephrasing your question or using different keywords. Feel free to ask another question!"
-    
+    # Return skill output using max_prompt for insights section
     return SkillOutput(
-        narrative=narrative,
+        narrative=max_prompt,
         visualizations=visualizations,
         export_data=[]
     )
