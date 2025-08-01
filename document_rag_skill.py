@@ -23,12 +23,9 @@ logger = logging.getLogger(__name__)
 
 @skill(
     name="Document RAG Explorer",
-    llm_name="document_rag_explorer",
     description="Retrieves and analyzes relevant documents from knowledge base to answer user questions",
     capabilities="Searches through uploaded documents, finds relevant passages, generates comprehensive answers with citations, and provides source visualizations",
     limitations="Limited to documents in the knowledge base, requires pre-processed document chunks in pack.json",
-    example_questions="What does the documentation say about X? Find information about Y in the documents. Explain concept Z from the knowledge base.",
-    parameter_guidance="Enter your question to search the knowledge base. The system will find relevant documents and generate a comprehensive answer.",
     parameters=[
         SkillParameter(
             name="user_question",
@@ -159,15 +156,22 @@ def document_rag_explorer(parameters: SkillInput):
         sources_html = "<p>Error loading sources</p>"
         title = "Error"
     
-    # Create two visualizations - main response and sources
+    # Create single combined visualization like other skills
+    combined_html = f"""
+    <div class="rag-response">
+        <div class="main-content">
+            {main_html}
+        </div>
+        <div class="sources-section" style="margin-top: 40px;">
+            {sources_html}
+        </div>
+    </div>
+    """
+    
     visualizations = [
         SkillVisualization(
             title=title,
-            layout=main_html
-        ),
-        SkillVisualization(
-            title="Sources",
-            layout=sources_html
+            layout=combined_html
         )
     ]
     
@@ -461,155 +465,44 @@ Answer this question: {{user_query}}
 
 {{facts}}"""
 
-# Main response template (without sources)
-main_response_template = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-        }
-        .headline {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a1a1a;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e1e5e9;
-            padding-bottom: 10px;
-        }
-        .content {
-            margin-bottom: 40px;
-            font-size: 16px;
-            line-height: 1.7;
-        }
-        .content p {
-            margin-bottom: 16px;
-        }
-        sup {
-            color: #0066cc;
-            font-weight: 600;
-        }
-    </style>
-</head>
-<body>
-    <div class="headline">{{ title }}</div>
-    <div class="content">
+# Main response template (simplified for skill framework)
+main_response_template = """
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333;">
+    <div style="font-size: 24px; font-weight: 600; color: #1a1a1a; margin-bottom: 20px; border-bottom: 2px solid #e1e5e9; padding-bottom: 10px;">
+        {{ title }}
+    </div>
+    <div style="margin-bottom: 40px; font-size: 16px; line-height: 1.7;">
         {{ content|safe }}
     </div>
-</body>
-</html>"""
+</div>"""
 
-# Sources template (separate tab)
-sources_template = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sources</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-        }
-        .sources-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #dee2e6;
-            padding-bottom: 8px;
-        }
-        .source-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            padding: 16px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-            transition: box-shadow 0.2s ease;
-        }
-        .source-item:hover {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .source-thumbnail {
-            flex-shrink: 0;
-            margin-right: 16px;
-        }
-        .source-thumbnail img {
-            width: 120px;
-            height: 150px;
-            object-fit: cover;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f5f5f5;
-        }
-        .source-info {
-            flex: 1;
-        }
-        .source-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        .source-title a {
-            color: #0066cc;
-            text-decoration: none;
-            font-size: 16px;
-        }
-        .source-title a:hover {
-            text-decoration: underline;
-        }
-        .source-meta {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-        .source-preview {
-            color: #555;
-            font-size: 14px;
-            line-height: 1.5;
-            margin-top: 8px;
-        }
-    </style>
-</head>
-<body>
-    <div class="sources-title">Document Sources</div>
+# Sources template (simplified for skill framework)
+sources_template = """
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333;">
+    <div style="font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 20px; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">
+        Document Sources
+    </div>
     {% for ref in references %}
-    <div class="source-item">
-        <div class="source-thumbnail">
+    <div style="display: flex; align-items: flex-start; margin-bottom: 20px; padding: 16px; background-color: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
+        <div style="flex-shrink: 0; margin-right: 16px;">
             {% if ref.thumbnail %}
-            <img src="data:image/png;base64,{{ ref.thumbnail }}" alt="Document thumbnail">
+            <img src="data:image/png;base64,{{ ref.thumbnail }}" alt="Document thumbnail" style="width: 120px; height: 150px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; background-color: #f5f5f5;">
             {% else %}
-            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDEyMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCA2MEg4MFY2NEg0MFY2MFpNNDAgNzJIODBWNzZINDBWNzJaTTQwIDg0SDY0Vjg4SDQwVjg0WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K" alt="Document placeholder">
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDEyMCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCA2MEg4MFY2NEg0MFY2MFpNNDAgNzJIODBWNzZINDBWNzJaTTQwIDg0SDY0Vjg4SDQwVjg0WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K" alt="Document placeholder" style="width: 120px; height: 150px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px; background-color: #f5f5f5;">
             {% endif %}
         </div>
-        <div class="source-info">
-            <div class="source-title">
-                <a href="{{ ref.url }}" target="_blank">[{{ ref.number }}] {{ ref.text }}</a>
+        <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 8px;">
+                <a href="{{ ref.url }}" target="_blank" style="color: #0066cc; text-decoration: none; font-size: 16px;">[{{ ref.number }}] {{ ref.text }}</a>
             </div>
-            <div class="source-meta">{{ ref.src }}, Page {{ ref.page }}</div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 8px;">{{ ref.src }}, Page {{ ref.page }}</div>
             {% if ref.preview %}
-            <div class="source-preview">{{ ref.preview }}</div>
+            <div style="color: #555; font-size: 14px; line-height: 1.5; margin-top: 8px;">{{ ref.preview }}</div>
             {% endif %}
         </div>
     </div>
     {% endfor %}
-</body>
-</html>"""
+</div>"""
 
 if __name__ == '__main__':
     skill_input = document_rag_explorer.create_input(
