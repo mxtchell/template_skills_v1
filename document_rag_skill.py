@@ -160,15 +160,11 @@ def document_rag_explorer(parameters: SkillInput):
         sources_html = "<p>Error loading sources</p>"
         title = "Error"
     
-    # Create visualizations like component skill - separate tabs
+    # Single visualization with just main content - no sources for now
     visualizations = [
         SkillVisualization(
             title=title,
             layout=main_html
-        ),
-        SkillVisualization(
-            title="Sources",
-            layout=sources_html
         )
     ]
     
