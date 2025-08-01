@@ -103,6 +103,8 @@ def document_rag_explorer(parameters: SkillInput):
             max_characters=max_characters
         )
         
+        logger.info(f"DEBUG: Found {len(docs) if docs else 0} matching documents")
+        
         if not docs:
             # No results found
             no_results_html = """
@@ -129,6 +131,7 @@ def document_rag_explorer(parameters: SkillInput):
                         )
                     )
                     logger.info(f"DEBUG: Generated main HTML, length: {len(main_html)}")
+                    logger.info(f"DEBUG: Main HTML preview: {main_html[:200]}...")
                     
                     # Create separate sources HTML
                     sources_html = force_ascii_replace(
@@ -137,6 +140,7 @@ def document_rag_explorer(parameters: SkillInput):
                         )
                     )
                     logger.info(f"DEBUG: Generated sources HTML, length: {len(sources_html)}")
+                    logger.info(f"DEBUG: Sources HTML preview: {sources_html[:200]}...")
                     title = response_data['title']
                 except Exception as e:
                     logger.error(f"DEBUG: Error rendering HTML templates: {str(e)}")
@@ -156,22 +160,15 @@ def document_rag_explorer(parameters: SkillInput):
         sources_html = "<p>Error loading sources</p>"
         title = "Error"
     
-    # Create single combined visualization like other skills
-    combined_html = f"""
-    <div class="rag-response">
-        <div class="main-content">
-            {main_html}
-        </div>
-        <div class="sources-section" style="margin-top: 40px;">
-            {sources_html}
-        </div>
-    </div>
-    """
-    
+    # Create visualizations like component skill - separate tabs
     visualizations = [
         SkillVisualization(
             title=title,
-            layout=combined_html
+            layout=main_html
+        ),
+        SkillVisualization(
+            title="Sources",
+            layout=sources_html
         )
     ]
     
