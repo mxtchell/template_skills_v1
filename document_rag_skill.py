@@ -65,8 +65,8 @@ def document_rag_explorer(parameters: SkillInput):
     match_threshold = parameters.arguments.match_threshold or 0.3
     max_characters = parameters.arguments.max_characters or 3000
     
-    # Get globals if available (for topics list from previous components)
-    list_of_topics = getattr(parameters.globals, 'list_of_topics', [])
+    # Initialize empty topics list (globals not available in SkillInput)
+    list_of_topics = []
     
     # Initialize results
     main_html = ""
