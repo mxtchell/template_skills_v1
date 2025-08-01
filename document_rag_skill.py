@@ -89,7 +89,8 @@ def document_rag_explorer(parameters: SkillInput):
         
         if not loaded_sources:
             return SkillOutput(
-                narrative="No document sources found. Please ensure pack.json is available.",
+                final_prompt="No document sources found. Please ensure pack.json is available.",
+                narrative=None,
                 visualizations=[],
                 export_data=[]
             )
@@ -170,9 +171,10 @@ def document_rag_explorer(parameters: SkillInput):
         )
     ]
     
-    # Return skill output using max_prompt for insights section
+    # Return skill output with final_prompt for insights and narrative=None like other skills
     return SkillOutput(
-        narrative=max_prompt,
+        final_prompt=max_prompt,
+        narrative=None,
         visualizations=visualizations,
         export_data=[]
     )
@@ -293,13 +295,13 @@ def find_matching_documents(user_question, topics, loaded_sources, base_url, max
     search_terms = [user_question] + topics
     
     for source in loaded_sources:
-        if len(matches) >= max_sources or chars_so_far >= max_characters:
+        if len(matches) >= int(max_sources) or chars_so_far >= int(max_characters):
             break
             
         # Simple relevance scoring (in production, use embeddings)
         score = calculate_simple_relevance(source['text'], search_terms)
         
-        if score >= match_threshold:
+        if float(score) >= float(match_threshold):
             source['match_score'] = score
             # Build full URL for the document page
             source['url'] = f"{base_url.rstrip('/')}/{source['file_name']}#page={source['chunk_index']}"
