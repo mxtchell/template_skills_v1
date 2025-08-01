@@ -60,29 +60,6 @@ logger = logging.getLogger(__name__)
 def document_rag_explorer(parameters: SkillInput):
     """Main skill function for document RAG exploration"""
     
-    # Debug: Inspect parameters object for resource access
-    logger.info(f"DEBUG: parameters type: {type(parameters)}")
-    logger.info(f"DEBUG: parameters attributes: {dir(parameters)}")
-    logger.info(f"DEBUG: parameters.arguments attributes: {dir(parameters.arguments)}")
-    
-    # Check for any context or resource-related attributes
-    for attr in dir(parameters):
-        if not attr.startswith('_'):
-            try:
-                value = getattr(parameters, attr)
-                logger.info(f"DEBUG: parameters.{attr} = {value} (type: {type(value)})")
-                if hasattr(value, '__dict__'):
-                    logger.info(f"DEBUG: parameters.{attr} attributes: {dir(value)}")
-            except Exception as e:
-                logger.info(f"DEBUG: Could not access parameters.{attr}: {e}")
-    
-    # Check environment variables
-    import os
-    logger.info(f"DEBUG: Environment variables:")
-    for key, value in os.environ.items():
-        if any(keyword in key.upper() for keyword in ['SKILL', 'COPILOT', 'TENANT', 'AR_', 'ARTIFACTS']):
-            logger.info(f"DEBUG: {key} = {value}")
-    
     # Get parameters
     user_question = parameters.arguments.user_question
     base_url = parameters.arguments.base_url
@@ -195,64 +172,66 @@ def load_document_sources():
     loaded_sources = []
     
     try:
-        # Try to import ar_paths and see if it's available in code skills
+        # Build proper resource path using environment variables (like component skills)
+        # From component skill: os.path.join(ARTIFACTS_PATH, tenant, "skill_workspaces", copilot, skill_id, source)
+        
         try:
             from ar_paths import ARTIFACTS_PATH
             logger.info(f"DEBUG: Successfully imported ARTIFACTS_PATH: {ARTIFACTS_PATH}")
         except ImportError as e:
-            logger.info(f"DEBUG: Could not import ar_paths: {e}")
-            ARTIFACTS_PATH = None
-        # Debug: Show current working directory and __file__ location
-        current_file = os.path.abspath(__file__)
-        current_dir = os.path.dirname(current_file)
-        logger.info(f"DEBUG: Current file: {current_file}")
-        logger.info(f"DEBUG: Current directory: {current_dir}")
+            logger.info(f"DEBUG: Could not import ar_paths, using environment variable: {e}")
+            ARTIFACTS_PATH = os.environ.get('AR_DATA_BASE_PATH', '/artifacts')
         
-        # Look for pack.json in skill resources directory
-        # Try more comprehensive paths based on skill framework structure
-        possible_paths = [
-            os.path.join(current_dir, "pack.json"),
-            os.path.join(current_dir, "resources", "pack.json"),
-            os.path.join(current_dir, "..", "resources", "pack.json"),
-            os.path.join(current_dir, "skill_resources", "pack.json"),
-            os.path.join(current_dir, "..", "skill_resources", "pack.json"),
-            "/artifacts/maxstaging/skill_repositories/*/pack.json",  # Runtime path
-            "/artifacts/maxstaging/skill_repositories/*/resources/pack.json"
-        ]
+        # Get environment variables for path construction
+        tenant = os.environ.get('AR_TENANT_ID', 'maxstaging')
+        copilot = os.environ.get('AR_COPILOT_ID', '')
+        skill_id = os.environ.get('AR_COPILOT_SKILL_ID', '')
         
-        # Debug: Check what files exist in current directory
-        try:
-            files_in_dir = os.listdir(current_dir)
-            logger.info(f"DEBUG: Files in current directory: {files_in_dir}")
-        except Exception as e:
-            logger.info(f"DEBUG: Could not list current directory: {e}")
+        logger.info(f"DEBUG: Building resource path with:")
+        logger.info(f"DEBUG: ARTIFACTS_PATH: {ARTIFACTS_PATH}")
+        logger.info(f"DEBUG: tenant: {tenant}")
+        logger.info(f"DEBUG: copilot: {copilot}")
+        logger.info(f"DEBUG: skill_id: {skill_id}")
         
-        # Check parent directory too
-        try:
-            parent_dir = os.path.dirname(current_dir)
-            parent_files = os.listdir(parent_dir)
-            logger.info(f"DEBUG: Parent directory: {parent_dir}")
-            logger.info(f"DEBUG: Files in parent directory: {parent_files}")
-        except Exception as e:
-            logger.info(f"DEBUG: Could not list parent directory: {e}")
-        
-        pack_file = None
-        for path in possible_paths:
-            logger.info(f"DEBUG: Checking path: {path}")
-            if "*" in path:
-                # Handle wildcard paths
-                import glob
-                matches = glob.glob(path)
-                if matches:
-                    pack_file = matches[0]
-                    logger.info(f"DEBUG: Found wildcard match: {pack_file}")
-                    break
-            elif os.path.exists(path):
-                pack_file = path
-                logger.info(f"DEBUG: Found pack.json at: {pack_file}")
-                break
+        # Build the resource path like component skills do
+        if copilot and skill_id:
+            resource_path = os.path.join(
+                ARTIFACTS_PATH,
+                tenant,
+                "skill_workspaces",
+                copilot,
+                skill_id,
+                "pack.json"
+            )
+            logger.info(f"DEBUG: Constructed resource path: {resource_path}")
+            
+            # Check if the constructed path exists
+            if os.path.exists(resource_path):
+                pack_file = resource_path
+                logger.info(f"DEBUG: Found pack.json at constructed path: {pack_file}")
             else:
-                logger.info(f"DEBUG: Path does not exist: {path}")
+                logger.info(f"DEBUG: Constructed path does not exist: {resource_path}")
+                # List what's in the skill workspace directory
+                workspace_dir = os.path.join(ARTIFACTS_PATH, tenant, "skill_workspaces", copilot, skill_id)
+                try:
+                    if os.path.exists(workspace_dir):
+                        workspace_files = os.listdir(workspace_dir)
+                        logger.info(f"DEBUG: Files in skill workspace {workspace_dir}: {workspace_files}")
+                    else:
+                        logger.info(f"DEBUG: Skill workspace directory does not exist: {workspace_dir}")
+                        # Check parent directories
+                        parent_ws = os.path.join(ARTIFACTS_PATH, tenant, "skill_workspaces", copilot)
+                        if os.path.exists(parent_ws):
+                            parent_files = os.listdir(parent_ws)
+                            logger.info(f"DEBUG: Files in copilot directory {parent_ws}: {parent_files}")
+                        else:
+                            logger.info(f"DEBUG: Copilot directory does not exist: {parent_ws}")
+                except Exception as e:
+                    logger.info(f"DEBUG: Error listing workspace directory: {e}")
+                pack_file = None
+        else:
+            logger.warning(f"DEBUG: Missing environment variables - copilot: {copilot}, skill_id: {skill_id}")
+            pack_file = None
         
         if pack_file:
             logger.info(f"Loading documents from: {pack_file}")
