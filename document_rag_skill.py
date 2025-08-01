@@ -9,6 +9,8 @@ from skill_framework.skills import ExportData
 import requests
 import json
 import os
+import glob
+import traceback
 from jinja2 import Template
 import base64
 import io
@@ -150,9 +152,15 @@ def document_rag_explorer(parameters: SkillInput):
         )
     ]
     
-    # Return skill output
+    # Return skill output with acknowledgment-only narrative
+    doc_count = len(docs) if 'docs' in locals() else 0
+    if doc_count > 0:
+        narrative = f"Thank you for your question! I've found {doc_count} relevant documents in the knowledge base. Please check the response and sources tabs above for the detailed analysis. Feel free to ask follow-up questions if you need clarification on any of the findings."
+    else:
+        narrative = "Thank you for your question! I wasn't able to find relevant documents in the knowledge base for this query. You might try rephrasing your question or using different keywords. Feel free to ask another question!"
+    
     return SkillOutput(
-        narrative=f"Found {len(docs) if 'docs' in locals() else 0} relevant documents for your question.",
+        narrative=narrative,
         visualizations=visualizations,
         export_data=[]
     )
@@ -164,31 +172,73 @@ def load_document_sources():
     loaded_sources = []
     
     try:
+        # Debug: Show current working directory and __file__ location
+        current_file = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file)
+        logger.info(f"DEBUG: Current file: {current_file}")
+        logger.info(f"DEBUG: Current directory: {current_dir}")
+        
         # Look for pack.json in skill resources directory
-        # This should be in the same directory as the skill or in a resources folder
+        # Try more comprehensive paths based on skill framework structure
         possible_paths = [
-            os.path.join(os.path.dirname(__file__), "pack.json"),
-            os.path.join(os.path.dirname(__file__), "resources", "pack.json"),
-            os.path.join(os.path.dirname(__file__), "..", "resources", "pack.json")
+            os.path.join(current_dir, "pack.json"),
+            os.path.join(current_dir, "resources", "pack.json"),
+            os.path.join(current_dir, "..", "resources", "pack.json"),
+            os.path.join(current_dir, "skill_resources", "pack.json"),
+            os.path.join(current_dir, "..", "skill_resources", "pack.json"),
+            "/artifacts/maxstaging/skill_repositories/*/pack.json",  # Runtime path
+            "/artifacts/maxstaging/skill_repositories/*/resources/pack.json"
         ]
+        
+        # Debug: Check what files exist in current directory
+        try:
+            files_in_dir = os.listdir(current_dir)
+            logger.info(f"DEBUG: Files in current directory: {files_in_dir}")
+        except Exception as e:
+            logger.info(f"DEBUG: Could not list current directory: {e}")
+        
+        # Check parent directory too
+        try:
+            parent_dir = os.path.dirname(current_dir)
+            parent_files = os.listdir(parent_dir)
+            logger.info(f"DEBUG: Parent directory: {parent_dir}")
+            logger.info(f"DEBUG: Files in parent directory: {parent_files}")
+        except Exception as e:
+            logger.info(f"DEBUG: Could not list parent directory: {e}")
         
         pack_file = None
         for path in possible_paths:
-            if os.path.exists(path):
+            logger.info(f"DEBUG: Checking path: {path}")
+            if "*" in path:
+                # Handle wildcard paths
+                import glob
+                matches = glob.glob(path)
+                if matches:
+                    pack_file = matches[0]
+                    logger.info(f"DEBUG: Found wildcard match: {pack_file}")
+                    break
+            elif os.path.exists(path):
                 pack_file = path
+                logger.info(f"DEBUG: Found pack.json at: {pack_file}")
                 break
+            else:
+                logger.info(f"DEBUG: Path does not exist: {path}")
         
         if pack_file:
             logger.info(f"Loading documents from: {pack_file}")
             with open(pack_file, 'r', encoding='utf-8') as f:
                 resource_contents = json.load(f)
+                logger.info(f"DEBUG: Loaded JSON structure type: {type(resource_contents)}")
                 
                 # Handle different pack.json formats
                 if isinstance(resource_contents, list):
+                    logger.info(f"DEBUG: Processing {len(resource_contents)} files from pack.json")
                     # Format: [{"File": "doc.pdf", "Chunks": [{"Text": "...", "Page": 1}]}]
                     for processed_file in resource_contents:
                         file_name = processed_file.get("File", "unknown_file")
-                        for chunk in processed_file.get("Chunks", []):
+                        chunks = processed_file.get("Chunks", [])
+                        logger.info(f"DEBUG: Processing file '{file_name}' with {len(chunks)} chunks")
+                        for chunk in chunks:
                             res = {
                                 "file_name": file_name,
                                 "text": chunk.get("Text", ""),
@@ -198,12 +248,14 @@ def load_document_sources():
                             }
                             loaded_sources.append(res)
                 else:
-                    logger.warning("Unexpected pack.json format - expected array of files")
+                    logger.warning(f"Unexpected pack.json format - expected array of files, got: {type(resource_contents)}")
         else:
-            logger.warning("pack.json not found in expected locations")
+            logger.warning("pack.json not found in any expected locations")
             
     except Exception as e:
         logger.error(f"Error loading pack.json: {str(e)}")
+        import traceback
+        logger.error(f"DEBUG: Full traceback: {traceback.format_exc()}")
     
     logger.info(f"Loaded {len(loaded_sources)} document chunks from pack.json")
     return loaded_sources
